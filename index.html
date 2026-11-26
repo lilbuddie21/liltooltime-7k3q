@@ -256,7 +256,7 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
     </div>
 
     <div class="banner" id="sampleBanner">
-      <span>Showing a real sample: a DeWalt DW705 bought on HiBid for $50 and resold on Facebook Marketplace for $125. The premium and tax are assumptions.</span>
+      <span>Showing a real sample: a DeWalt DW705 bought at an auction for $50 total (the auction's fees and tax included), about $20 of gas to pick it up, and resold on Facebook Marketplace for $125. For your own bids, enter the winning bid, premium and tax separately.</span>
       <button type="button" class="small" id="newDealTop">Start a new deal</button>
     </div>
 
@@ -479,8 +479,8 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
 
   /* ---------- state ---------- */
   var SAMPLE = {
-    mode: 'auction', resale: '125', channel: 'fb', feePct: '0', shipOut: '0', price: '', hammer: '50', premium: '16',
-    tax: '7', inbound: '0', other: '0', newPrice: '299.99', minProfit: '25', targetRoi: '50',
+    mode: 'auction', resale: '125', channel: 'fb', feePct: '0', shipOut: '0', price: '', hammer: '50', premium: '0',
+    tax: '0', inbound: '20', other: '0', newPrice: '299.99', minProfit: '25', targetRoi: '50',
     name: 'DeWalt DW705 miter saw', source: 'HiBid'
   };
   var state = { calc: {}, sample: true, find: { brand: 'DeWalt', mod: 'None', type: 'miter saw' }, tab: 'check', installDismissed: false };

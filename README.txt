@@ -26,8 +26,8 @@ The log lives in the phone's storage for this app. Use Log, then Back up now and
 and before deleting the app or clearing Safari data. Restore reads the same file back in.
 
 UPDATING
-If you change any file later, change CACHE = 'deal-desk-v1' in sw.js to a new value
-(for example 'deal-desk-v2') so phones pick up the new version.
+If you change any file later, change CACHE = 'deal-desk-v2' in sw.js to a new value
+(for example 'deal-desk-v3') so phones pick up the new version.
 
 FILES
 index.html            the app
