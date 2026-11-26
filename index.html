@@ -240,14 +240,7 @@ table.plt td:nth-child(3) { font-weight: 650; }
 .actions button { flex: 1 1 140px; }
 textarea.export { width: 100%; min-height: 120px; font: inherit; font-size: 14px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
 
-.checklist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.checklist li { border-top: 1px solid var(--line); }
-.checklist li:first-child { border-top: 0; }
-.checklist label { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; margin: 0; font-size: 15.5px; font-weight: 400; color: var(--ink); cursor: pointer; }
-.checklist input { width: 22px; height: 22px; margin: 1px 0 0; flex: none; accent-color: var(--accent); }
-.checklist input:checked + span { color: var(--muted); text-decoration: line-through; }
-
-nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: grid; grid-template-columns: repeat(5, 1fr); background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
+nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: grid; grid-template-columns: repeat(4, 1fr); background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
 .tab { background: none; border: 0; border-radius: 0; color: var(--muted); min-height: 58px; padding: 8px 4px 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 11.5px; font-weight: 650; }
 .tab[aria-selected="true"] { color: var(--accent); }
 .tab svg { width: 24px; height: 24px; }
@@ -622,15 +615,6 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
     </div>
   </section>
 
-  <!-- ===================== ROUTINE ===================== -->
-  <section class="view" id="view-routine" aria-labelledby="h-routine">
-    <h2 id="h-routine">Routine</h2>
-    <p class="sub">Checks clear at midnight.</p>
-    <div class="card"><h3>Daily 10-minute pass</h3><ul class="checklist" data-list="daily"></ul></div>
-    <div class="card"><h3>Before buying in a store or online</h3><ul class="checklist" data-list="retail"></ul></div>
-    <div class="card"><h3>Before bidding on HiBid</h3><ul class="checklist" data-list="bid"></ul></div>
-  </section>
-
 </div>
 
 <nav class="tabs" role="tablist" aria-label="Sections">
@@ -642,8 +626,6 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><path d="M7 7h.01"/></svg>Sell</button>
   <button type="button" class="tab" role="tab" data-tab="log" aria-selected="false">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></svg>Log</button>
-  <button type="button" class="tab" role="tab" data-tab="routine" aria-selected="false">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12.5l3 3 5-6"/></svg>Routine</button>
 </nav>
 
 <script>
@@ -678,7 +660,7 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
     (kids || []).forEach(function (c) { if (c) e.appendChild(c); });
     return e;
   }
-  /* Local calendar day (not UTC), so evening entries and the daily checklist use the phone's own date. */
+  /* Local calendar day (not UTC), so evening entries use the phone's own date. */
   function isoDay(d) {
     d = d || new Date();
     var m = d.getMonth() + 1, day = d.getDate();
@@ -775,7 +757,7 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
   }
 
   /* ---------- tabs ---------- */
-  var TABS = ['find', 'check', 'sell', 'log', 'routine'];
+  var TABS = ['find', 'check', 'sell', 'log'];
   function showTab(name) {
     if (TABS.indexOf(name) < 0) name = 'check';
     TABS.forEach(function (t) { $('view-' + t).classList.toggle('active', t === name); });
@@ -1554,45 +1536,6 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
     box.value = text;
     var fail = function () { msg.textContent = 'Copy was blocked. Select the text below and copy it.'; box.hidden = false; box.focus(); box.select(); };
     try { navigator.clipboard.writeText(text).then(function () { msg.textContent = 'Copied.'; box.hidden = true; }, fail); } catch (e) { fail(); }
-  });
-
-  /* ---------- Routine, cleared each day ---------- */
-  var LISTS = {
-    daily: [
-      'Open Home Depot, Lowe\'s and HiBid already signed in, in the apps or one browser. Prices are generally visible signed out; sign-in is for saved lists, store settings and checkout.',
-      'Confirm My Store is set to the nearest store on both retail sites.',
-      'Home Depot: Shop All, then Savings, then Shop All Savings. Sort by price, low to high.',
-      'Lowe\'s: search each brand with "clearance" and filter to your store.',
-      'HiBid: run the same brand searches, filter by distance, and sort by ending soonest.',
-      'Look up recent sold prices for each model that looks good before spending anything.'
-    ],
-    retail: [
-      'The same model has sold recently at a price that clears your targets on the Check tab.',
-      'Return window and any purchase limits are checked before buying more than one.',
-      'In a store, read the markdown date on the clearance tag.',
-      'If a purchase comes with a free tool or battery, plan to sell the freebie separately.',
-      'Battery and charger are included, or the tool sells well as a bare tool.'
-    ],
-    bid: [
-      'Buyer\'s premium and sales tax are read from the auction\'s own terms and entered on the Check tab.',
-      'Auction Details, then Shipping / Pickup, is checked. Pickup-only lots need a drive; shipping can be quoted high.',
-      'You are registered for this auction. Each auctioneer needs its own registration.',
-      'Condition is understood: tools are usually sold as-is. Missing batteries or chargers cut resale value.',
-      'Your max bid is the number from the Check tab. The end time extends while bids keep coming, so decide the ceiling first and stick to it.'
-    ]
-  };
-  var checkKey = 'dd2-checks-' + isoDay();
-  var checks = {};
-  try { checks = JSON.parse(store.get(checkKey) || '{}') || {}; } catch (e) { checks = {}; }
-  Array.prototype.forEach.call(document.querySelectorAll('ul.checklist'), function (ul) {
-    var key = ul.getAttribute('data-list');
-    LISTS[key].forEach(function (text, n) {
-      var id = key + '-' + n;
-      var cb = el('input', { type: 'checkbox', id: 'chk-' + id });
-      cb.checked = !!checks[id];
-      cb.addEventListener('change', function () { checks[id] = cb.checked; store.set(checkKey, JSON.stringify(checks)); });
-      ul.appendChild(el('li', null, [el('label', null, [cb, el('span', { text: text })])]));
-    });
   });
 
   /* ---------- install hint (iPhone Safari only) ---------- */
