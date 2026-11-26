@@ -2,11 +2,11 @@ DEAL DESK - installable phone app (web app, no App Store)
 
 WHAT IT IS
 A small offline web app for finding, pricing and tracking resale deals, and for comparing where to sell your own gear.
-Four tabs: Find (search Home Depot, Lowe's and HiBid), Check (profit calculator), Sell (where to sell your own stuff),
-Log (deals, totals, and profit-and-loss charts).
+Five tabs: Find (search Home Depot, Lowe's and HiBid), Check (profit calculator), Sell (where to sell your own stuff),
+Inventory (every item with its details and photos), Profit (totals, profit-and-loss charts and backup).
 
-It has no accounts, no tracking and no outside services. The deal log is stored only
-on the phone it runs on. It does not send anything anywhere.
+It has no accounts, no tracking and no outside services. The inventory and sales are stored only
+on the phone it runs on (photos too; photos are not part of the backup file). It does not send anything anywhere.
 
 TO USE IT ON AN iPHONE
 1. Put this whole folder on any static web host (see below) so it has an https:// address.
@@ -26,8 +26,8 @@ The log lives in the phone's storage for this app. Use Log, then Back up now and
 and before deleting the app or clearing Safari data. Restore reads the same file back in.
 
 UPDATING
-If you change any file later, change CACHE = 'deal-desk-v5' in sw.js to a new value
-(for example 'deal-desk-v6') so phones pick up the new version.
+If you change any file later, change CACHE = 'deal-desk-v6' in sw.js to a new value
+(for example 'deal-desk-v7') so phones pick up the new version.
 
 FILES
 index.html            the app

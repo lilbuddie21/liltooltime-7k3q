@@ -1,7 +1,7 @@
 {
   "name": "Deal Desk",
   "short_name": "Deal Desk",
-  "description": "Find, price and track resale deals, and compare where to sell your own gear.",
+  "description": "Find, price and track resale deals, keep an inventory, and compare where to sell your own gear.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
