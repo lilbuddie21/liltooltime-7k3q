@@ -1,8 +1,8 @@
 DEAL DESK - installable phone app (web app, no App Store)
 
 WHAT IT IS
-A small offline web app for finding, pricing and tracking power tool resale deals.
-Four tabs: Find (search Home Depot, Lowe's and HiBid), Check (profit calculator),
+A small offline web app for finding, pricing and tracking resale deals, and for comparing where to sell your own gear.
+Five tabs: Find (search Home Depot, Lowe's and HiBid), Check (profit calculator), Sell (where to sell your own stuff),
 Log (deals and totals), Routine (daily checklists).
 
 It has no accounts, no tracking and no outside services. The deal log is stored only
@@ -26,8 +26,8 @@ The log lives in the phone's storage for this app. Use Log, then Back up now and
 and before deleting the app or clearing Safari data. Restore reads the same file back in.
 
 UPDATING
-If you change any file later, change CACHE = 'deal-desk-v2' in sw.js to a new value
-(for example 'deal-desk-v3') so phones pick up the new version.
+If you change any file later, change CACHE = 'deal-desk-v3' in sw.js to a new value
+(for example 'deal-desk-v4') so phones pick up the new version.
 
 FILES
 index.html            the app

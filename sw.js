@@ -1,5 +1,5 @@
 /* Deal Desk offline cache. Bump CACHE when any app file changes so phones pick up the new version. */
-var CACHE = 'deal-desk-v2';
+var CACHE = 'deal-desk-v3';
 var ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', function (e) {

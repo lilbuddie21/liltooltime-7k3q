@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Deal Desk</title>
 <meta name="robots" content="noindex, nofollow">
-<meta name="description" content="Find, price and track power tool resale deals.">
+<meta name="description" content="Find, price and track resale deals, and compare where to sell your own gear.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
@@ -17,7 +17,7 @@
 <meta name="theme-color" content="#101614" media="(prefers-color-scheme: dark)">
 <meta name="format-detection" content="telephone=no">
 <style>
-/* Layout idea: one phone column, four tabs along the bottom. The result card stays pinned while she edits numbers. */
+/* Layout idea: one phone column, five tabs along the bottom. The result card stays pinned while she edits numbers. */
 :root {
   --bg: #f2f5f4;
   --surface: #ffffff;
@@ -161,6 +161,23 @@ button:active { filter: brightness(0.92); }
 .msg { font-size: 14px; color: var(--muted); min-height: 20px; }
 .msg a { color: var(--accent); font-weight: 650; }
 
+.chan { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.chan.best { background: var(--accent-soft); border-color: var(--accent); }
+.chan .nm { font-weight: 700; }
+.chan .dt { font-size: 13px; color: var(--muted); margin-top: 2px; overflow-wrap: anywhere; }
+.chan .amt { text-align: right; font-weight: 800; font-size: 18px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.chan .amt small { display: block; font-size: 12.5px; font-weight: 550; color: var(--muted); }
+.chan .amt.neg { color: var(--bad); }
+.fees { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
+.feerow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; align-items: end; }
+.feerow .nm { grid-column: 1 / -1; font-size: 15px; font-weight: 700; }
+.sellkeep span { display: block; }
+.feerow label { font-size: 12px; margin-bottom: 2px; }
+.feerow input { min-height: 42px; }
+@media (max-width: 359px) { .sellkeep span + span { display: none; } }
+details.more > summary { cursor: pointer; font-weight: 700; min-height: 30px; display: flex; align-items: center; }
+.linkrow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.linkrow a { display: flex; align-items: center; justify-content: center; text-align: center; min-height: 46px; padding: 6px 8px; border: 1px solid var(--accent); border-radius: 10px; color: var(--accent); font-weight: 650; font-size: 14.5px; text-decoration: none; background: var(--surface); }
 .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .stat { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
 .stat .k { font-size: 12.5px; color: var(--muted); font-weight: 600; }
@@ -184,7 +201,7 @@ textarea.export { width: 100%; min-height: 120px; font: inherit; font-size: 14px
 .checklist input { width: 22px; height: 22px; margin: 1px 0 0; flex: none; accent-color: var(--accent); }
 .checklist input:checked + span { color: var(--muted); text-decoration: line-through; }
 
-nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: grid; grid-template-columns: repeat(4, 1fr); background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
+nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: grid; grid-template-columns: repeat(5, 1fr); background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
 .tab { background: none; border: 0; border-radius: 0; color: var(--muted); min-height: 58px; padding: 8px 4px 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 11.5px; font-weight: 650; }
 .tab[aria-selected="true"] { color: var(--accent); }
 .tab svg { width: 24px; height: 24px; }
@@ -371,6 +388,111 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
     </div>
   </section>
 
+  <!-- ===================== SELL ===================== -->
+  <section class="view" id="view-sell" aria-labelledby="h-sell">
+    <h2 id="h-sell">Sell your own stuff</h2>
+
+    <div class="result" aria-live="polite">
+      <div class="vrow">
+        <span class="pill" id="sellPill">Enter a price</span>
+        <span class="profit" id="sellBig">-</span>
+        <span class="roi sellkeep" id="sellKeep"></span>
+      </div>
+    </div>
+
+    <div class="banner" id="sellBanner">
+      <span>Placeholder numbers to show how it works: the $300 price and $60 shipping are guesses, not real quotes. Look up what your trainer actually sold for and get a shipping quote. The fee rates are current as of November 2026.</span>
+      <button type="button" class="small" id="newSellTop">Start a new item</button>
+    </div>
+
+    <div class="card">
+      <h3>The item</h3>
+      <div>
+        <label for="sName">Item</label>
+        <input type="text" id="sName" autocomplete="off" placeholder="Wahoo KICKR CORE trainer">
+      </div>
+      <div>
+        <label for="sType">Kind of item</label>
+        <select id="sType">
+          <option value="device">Computer, phone, tablet or game console</option>
+          <option value="electronics">Other electronics</option>
+          <option value="sports">Sports or fitness gear</option>
+          <option value="other">Something else</option>
+        </select>
+      </div>
+      <div class="grid2">
+        <div>
+          <label for="sPrice">Price you expect</label>
+          <div class="unit" data-pre="$"><input type="text" id="sPrice" inputmode="decimal" autocomplete="off"></div>
+        </div>
+        <div>
+          <label for="sPaid">What you paid</label>
+          <div class="unit" data-pre="$"><input type="text" id="sPaid" inputmode="decimal" autocomplete="off"></div>
+        </div>
+      </div>
+      <p class="hint">Use what the same model has actually sold for, not asking prices. What you paid is optional and only used to show a gain or loss.</p>
+      <div class="linkrow">
+        <a id="linkEbaySold" href="https://www.ebay.com/sch/i.html?_nkw=used&LH_Sold=1&LH_Complete=1" target="_blank" rel="noopener">eBay sold prices</a>
+        <a id="linkFbSearch" href="https://www.facebook.com/marketplace/search/?query=used" target="_blank" rel="noopener">Facebook listings</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Shipping and extras</h3>
+      <div class="seg" role="radiogroup" aria-label="Who pays shipping">
+        <label><input type="radio" name="shipmode" value="seller"><span>I cover shipping</span></label>
+        <label><input type="radio" name="shipmode" value="buyer"><span>Buyer pays shipping</span></label>
+      </div>
+      <div class="grid2">
+        <div>
+          <label for="sShip">Shipping cost</label>
+          <div class="unit" data-pre="$"><input type="text" id="sShip" inputmode="decimal" autocomplete="off"></div>
+        </div>
+        <div>
+          <label for="sPack">Box and packing</label>
+          <div class="unit" data-pre="$"><input type="text" id="sPack" inputmode="decimal" autocomplete="off"></div>
+        </div>
+        <div>
+          <label for="sLocal">Local meetup costs</label>
+          <div class="unit" data-pre="$"><input type="text" id="sLocal" inputmode="decimal" autocomplete="off"></div>
+        </div>
+        <div>
+          <label for="sTrade">Trade-in offer</label>
+          <div class="unit" data-pre="$"><input type="text" id="sTrade" inputmode="decimal" autocomplete="off"></div>
+        </div>
+      </div>
+      <p class="hint">Get a real shipping quote from the carrier for the boxed size and weight. Trade-in is optional: type an offer you were given and it shows up in the comparison.</p>
+    </div>
+
+    <div class="card" aria-live="polite">
+      <h3>What you keep, by way of selling</h3>
+      <div id="chanList" style="display:flex; flex-direction:column; gap:10px;"></div>
+      <p class="compare" id="sellCompare"></p>
+      <p class="compare" id="sellWarn"></p>
+    </div>
+
+    <div class="card">
+      <details class="more">
+        <summary>Fee settings</summary>
+        <div class="fees" id="feeBox"></div>
+        <p class="hint">Rates as of November 2026. Edit them if a site changes its fees. Sites differ on some of these, so check the site's own fee page before relying on a number.</p>
+      </details>
+    </div>
+
+    <div class="card">
+      <h3>Before you list</h3>
+      <ul class="tips" id="sellTips"></ul>
+    </div>
+
+    <div class="card">
+      <h3>Save to log</h3>
+      <p class="sub">Saves the item with the best way to sell it, so you can mark it listed and sold later.</p>
+      <button type="button" id="sellSaveBtn">Save to log</button>
+      <p class="msg" id="sellSaveMsg"></p>
+      <button type="button" class="ghost" id="newSellBtn">Start a new item</button>
+    </div>
+  </section>
+
   <!-- ===================== LOG ===================== -->
   <section class="view" id="view-log" aria-labelledby="h-log">
     <h2 id="h-log">Deal log</h2>
@@ -379,6 +501,7 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
       <div class="stat"><div class="k">Cash tied up</div><div class="v" id="statTied">$0.00</div></div>
       <div class="stat"><div class="k">Items sold</div><div class="v" id="statSold">0</div></div>
       <div class="stat"><div class="k">Typical sold price vs new</div><div class="v" id="statPct">-</div></div>
+      <div class="stat" id="statOwnBox" style="grid-column: 1 / -1;" hidden><div class="k">Kept from selling your own items</div><div class="v" id="statOwn">$0.00</div></div>
     </div>
     <div id="dealList" style="display:flex; flex-direction:column; gap:12px;"></div>
     <p class="empty" id="logEmpty">No deals saved yet. Check a deal, then tap Save to log.</p>
@@ -412,6 +535,8 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/></svg>Find</button>
   <button type="button" class="tab" role="tab" data-tab="check" aria-selected="false">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8.5 7.5h7M8.5 12h.01M12 12h.01M15.5 12h.01M8.5 16h.01M12 16h.01M15.5 16h.01"/></svg>Check</button>
+  <button type="button" class="tab" role="tab" data-tab="sell" aria-selected="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><path d="M7 7h.01"/></svg>Sell</button>
   <button type="button" class="tab" role="tab" data-tab="log" aria-selected="false">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></svg>Log</button>
   <button type="button" class="tab" role="tab" data-tab="routine" aria-selected="false">
@@ -483,12 +608,23 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
     tax: '0', inbound: '20', other: '0', newPrice: '299.99', minProfit: '25', targetRoi: '50',
     name: 'DeWalt DW705 miter saw', source: 'HiBid'
   };
-  var state = { calc: {}, sample: true, find: { brand: 'DeWalt', mod: 'None', type: 'miter saw' }, tab: 'check', installDismissed: false };
+  /* Sell tab placeholders. The price and shipping are guesses to show how the tab works, not quotes. */
+  var SELL_SAMPLE = { name: 'Wahoo KICKR CORE trainer', type: 'sports', price: '300', paid: '', shipMode: 'seller', ship: '60', pack: '5', local: '0', trade: '' };
+  var state = { calc: {}, sample: true, sell: {}, sellSample: true, fees: {}, find: { brand: 'DeWalt', mod: 'None', type: 'miter saw' }, tab: 'check', installDismissed: false };
   Object.keys(SAMPLE).forEach(function (k) { state.calc[k] = SAMPLE[k]; });
+  Object.keys(SELL_SAMPLE).forEach(function (k) { state.sell[k] = SELL_SAMPLE[k]; });
   try {
     var saved = JSON.parse(store.get('dd2-state') || 'null');
     if (saved && typeof saved === 'object') {
       if (saved.calc) Object.keys(SAMPLE).forEach(function (k) { if (typeof saved.calc[k] === 'string') state.calc[k] = saved.calc[k]; });
+      if (saved.sell) Object.keys(SELL_SAMPLE).forEach(function (k) { if (typeof saved.sell[k] === 'string') state.sell[k] = saved.sell[k]; });
+      if (typeof saved.sellSample === 'boolean') state.sellSample = saved.sellSample;
+      if (saved.fees && typeof saved.fees === 'object') {
+        Object.keys(saved.fees).forEach(function (id) {
+          var f = saved.fees[id];
+          if (f && typeof f === 'object') state.fees[id] = { pct: typeof f.pct === 'string' ? f.pct : undefined, fixed: typeof f.fixed === 'string' ? f.fixed : undefined };
+        });
+      }
       if (typeof saved.sample === 'boolean') state.sample = saved.sample;
       if (saved.find) { ['brand', 'mod', 'type'].forEach(function (k) { if (typeof saved.find[k] === 'string') state.find[k] = saved.find[k]; }); }
       if (typeof saved.tab === 'string') state.tab = saved.tab;
@@ -498,6 +634,7 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
   function saveState() { store.set('dd2-state', JSON.stringify(state)); }
 
   var STATUSES = ['Watching', 'Bought', 'Listed', 'Sold'];
+  var OWN_STATUSES = ['Planning', 'Listed', 'Sold'];
   var log = [];
   try { var rawLog = JSON.parse(store.get('dd2-log') || '[]'); if (Array.isArray(rawLog)) log = rawLog.map(cleanDeal).filter(Boolean); } catch (e) { log = []; }
   function saveLog() { store.set('dd2-log', JSON.stringify(log)); }
@@ -505,11 +642,13 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
   function cleanDeal(d) {
     if (!d || typeof d.name !== 'string') return null;
     var exp = isFinite(d.expProfit) ? Number(d.expProfit) : (isFinite(d.profit) ? Number(d.profit) : 0);
+    var own = d.kind === 'own';
     return {
       id: typeof d.id === 'string' ? d.id : String(Date.now()) + Math.random().toString(36).slice(2, 7),
+      kind: own ? 'own' : 'flip',
       name: d.name.slice(0, 200),
       source: typeof d.source === 'string' ? d.source.slice(0, 40) : 'Other',
-      status: STATUSES.indexOf(d.status) >= 0 ? d.status : 'Watching',
+      status: (own ? OWN_STATUSES : STATUSES).indexOf(d.status) >= 0 ? d.status : (own ? 'Planning' : 'Watching'),
       cost: isFinite(d.cost) ? Number(d.cost) : 0,
       expProfit: exp,
       soldNet: d.soldNet != null && d.soldNet !== '' && isFinite(d.soldNet) ? Number(d.soldNet) : null,
@@ -519,7 +658,7 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
   }
 
   /* ---------- tabs ---------- */
-  var TABS = ['find', 'check', 'log', 'routine'];
+  var TABS = ['find', 'check', 'sell', 'log', 'routine'];
   function showTab(name) {
     if (TABS.indexOf(name) < 0) name = 'check';
     TABS.forEach(function (t) { $('view-' + t).classList.toggle('active', t === name); });
@@ -686,10 +825,209 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
     msg.appendChild(a);
   });
 
+  /* ---------- Sell: where to sell your own stuff ---------- */
+  /* Fee rates as of November 2026. They are editable in the app because sites change them. */
+  var CHANNELS = [
+    { id: 'local', name: 'Local pickup', pct: 0, fixed: 0, ships: false },
+    { id: 'fb', name: 'Facebook, shipped', pct: 10, fixed: 0, minFee: 0.8, ships: true, hint: '10% of item plus shipping, at least $0.80' },
+    { id: 'ebay', name: 'eBay', pct: 13.6, fixed: 0.4, ships: true, hint: '13.6% of item plus shipping, plus $0.40 an order. Some categories differ.' },
+    { id: 'mercari', name: 'Mercari', pct: 10, fixed: 0, ships: true, hint: '10% of item plus shipping. A few sources list 0%, so check Mercari.' },
+    { id: 'swappa', name: 'Swappa', pct: 6.49, fixed: 0.49, ships: true, devicesOnly: true, hint: '3% Swappa fee plus PayPal 3.49% and $0.49' }
+  ];
+  var SELL_FIELDS = { sName: 'name', sType: 'type', sPrice: 'price', sPaid: 'paid', sShip: 'ship', sPack: 'pack', sLocal: 'local', sTrade: 'trade' };
+
+  function feeOf(ch) {
+    var o = state.fees[ch.id] || {};
+    var p = o.pct !== undefined && String(o.pct).trim() !== '' ? num(o.pct) : ch.pct;
+    var f = o.fixed !== undefined && String(o.fixed).trim() !== '' ? num(o.fixed) : ch.fixed;
+    return { pct: p, fixed: f };
+  }
+  function feeMap() { var m = {}; CHANNELS.forEach(function (ch) { m[ch.id] = feeOf(ch); }); return m; }
+
+  /* Pure: what you keep on each way of selling, best first. s holds numbers, fees maps channel id to {pct, fixed}. */
+  function sellCalc(s, fees) {
+    if (!(s.price > 0)) return [];
+    var buyerPays = s.shipMode === 'buyer';
+    var rows = [];
+    CHANNELS.forEach(function (ch, idx) {
+      if (ch.devicesOnly && s.type !== 'device') return;
+      var row = { id: ch.id, name: ch.name, fee: 0, ship: 0, pack: 0, other: 0, gross: s.price, net: 0, order: idx };
+      if (!ch.ships) {
+        row.other = s.local;
+      } else {
+        var f = fees[ch.id] || { pct: ch.pct, fixed: ch.fixed };
+        row.gross = s.price + (buyerPays ? s.ship : 0);
+        row.fee = row.gross * f.pct / 100 + f.fixed;
+        if (ch.minFee) row.fee = Math.max(row.fee, ch.minFee);
+        row.ship = s.ship; row.pack = s.pack;
+      }
+      row.net = row.gross - row.fee - row.ship - row.pack - row.other;
+      rows.push(row);
+    });
+    if (s.trade > 0) rows.push({ id: 'trade', name: 'Trade-in offer', fee: 0, ship: 0, pack: 0, other: 0, gross: s.trade, net: s.trade, order: 99 });
+    rows.sort(function (a, b) { return (b.net - a.net) || (a.order - b.order); });
+    return rows;
+  }
+
+  var SELL_TIPS = {
+    device: [
+      'Back up what you want to keep, then sign out of Apple ID, iCloud, Microsoft and any other accounts.',
+      'Turn off Find My or Activation Lock, then erase the device with its built-in reset so the buyer gets a clean one.',
+      'Test the screen, keyboard, ports, battery and charger, and describe anything that is off.',
+      'Include the original charger. Swappa is built for used phones, laptops, tablets and consoles, and its fee is lower than eBay\'s.'
+    ],
+    electronics: [
+      'Sign out of accounts and erase personal data with the device\'s own reset.',
+      'Test everything that can be tested and say what you found.',
+      'Include cables, remotes and the power adapter, and the original box if you have it.'
+    ],
+    sports: [
+      'Clean it and test it. For a smart trainer, pair it with a training app to confirm power and resistance work.',
+      'List the exact model and version (for example KICKR CORE or KICKR CORE 2) and what comes with it: power cable, cassette or cog, axle adapters.',
+      'Say how much it was used and note any wear.',
+      'Heavy or bulky gear costs a lot to ship, so check local pickup first, and get a real quote for the boxed size and weight before you offer shipping.'
+    ],
+    other: [
+      'Clean it and test it before you take photos.'
+    ],
+    common: [
+      'Price it from what the same model actually sold for. On eBay, search the exact model and filter to Sold items, then compare a few recent sales.',
+      'Take clear photos in good light, including the model label or serial number and any wear.',
+      'Say plainly what is included and that it is sold as is.',
+      'For a local sale, meet somewhere public and take a payment you can confirm before the item leaves your hands.'
+    ]
+  };
+
+  var lastSell = null;
+  function readSell() {
+    var c = state.sell;
+    return {
+      type: SELL_TIPS[c.type] ? c.type : 'other',
+      shipMode: c.shipMode === 'buyer' ? 'buyer' : 'seller',
+      price: num(c.price), paid: num(c.paid), ship: num(c.ship), pack: num(c.pack), local: num(c.local), trade: num(c.trade)
+    };
+  }
+  function renderSell() {
+    var s = readSell(), c = state.sell;
+    $('sellBanner').hidden = !state.sellSample;
+    var rows = sellCalc(s, feeMap());
+    lastSell = { s: s, rows: rows };
+    var best = rows[0];
+
+    var q = encodeURIComponent((c.name || '').trim() || 'used');
+    $('linkEbaySold').href = 'https://www.ebay.com/sch/i.html?_nkw=' + q + '&LH_Sold=1&LH_Complete=1';
+    $('linkFbSearch').href = 'https://www.facebook.com/marketplace/search/?query=' + q;
+
+    var pill = $('sellPill'), big = $('sellBig');
+    if (!best) {
+      pill.className = 'pill'; pill.textContent = 'Enter a price';
+      big.textContent = '-'; big.className = 'profit';
+      $('sellKeep').textContent = '';
+    } else {
+      pill.className = 'pill ' + (best.net > 0 ? 'buy' : 'pass'); pill.textContent = 'KEEP';
+      big.textContent = money(best.net); big.className = 'profit' + (best.net < 0 ? ' neg' : '');
+      var kp = $('sellKeep'); kp.textContent = '';
+      kp.appendChild(el('span', { text: best.name }));
+      kp.appendChild(el('span', { text: pct(best.net / s.price) + ' of price' }));
+    }
+
+    var list = $('chanList'); list.textContent = '';
+    rows.forEach(function (r, n) {
+      var detail;
+      if (r.id === 'local') detail = 'No fees.' + (r.other > 0 ? ' Meetup costs ' + money(r.other) + '.' : '');
+      else if (r.id === 'trade') detail = 'The offer you entered.';
+      else detail = 'Fees ' + money(r.fee) + '  ·  shipping ' + money(r.ship) + (r.pack > 0 ? '  ·  packing ' + money(r.pack) : '') + (s.shipMode === 'buyer' ? '  ·  buyer pays shipping' : '');
+      var amt = el('div', { class: 'amt' + (r.net < 0 ? ' neg' : '') }, [document.createTextNode(money(r.net)), el('small', { text: pct(r.net / s.price) + ' of price' })]);
+      list.appendChild(el('div', { class: 'chan' + (n === 0 ? ' best' : '') }, [
+        el('div', null, [el('div', { class: 'nm', text: r.name + (n === 0 ? '  ·  best' : '') }), el('div', { class: 'dt', text: detail })]),
+        amt
+      ]));
+    });
+
+    var cmp = '';
+    if (rows.length >= 2) {
+      var diff = rows[0].net - rows[1].net;
+      cmp = diff < 0.005 ? rows[0].name + ' and ' + rows[1].name + ' tie.' : rows[0].name + ' keeps ' + money(diff) + ' more than ' + rows[1].name + '.';
+    }
+    if (best && s.paid > 0) {
+      var vs = best.net - s.paid;
+      cmp += (cmp ? ' ' : '') + 'Against the ' + money(s.paid) + ' you paid, that is ' + (vs >= 0 ? 'a gain of ' : 'a loss of ') + money(Math.abs(vs)) + '.';
+    }
+    $('sellCompare').textContent = cmp;
+    $('sellWarn').textContent = best && s.ship <= 0 ? 'Shipping is set to $0, so the shipped options look better than they will. Add a real quote.' : '';
+
+    var tips = $('sellTips'); tips.textContent = '';
+    (SELL_TIPS[s.type] || []).concat(SELL_TIPS.common).forEach(function (t) { tips.appendChild(el('li', { text: t })); });
+  }
+
+  function buildFeeBox() {
+    var box = $('feeBox');
+    CHANNELS.forEach(function (ch) {
+      if (!ch.ships) return;
+      var pctIn = el('input', { type: 'text', id: 'fee-pct-' + ch.id, inputmode: 'decimal', autocomplete: 'off', placeholder: String(ch.pct) });
+      var fixIn = el('input', { type: 'text', id: 'fee-fix-' + ch.id, inputmode: 'decimal', autocomplete: 'off', placeholder: ch.fixed ? ch.fixed.toFixed(2) : '0' });
+      var o = state.fees[ch.id] || {};
+      pctIn.value = o.pct !== undefined ? o.pct : ''; fixIn.value = o.fixed !== undefined ? o.fixed : '';
+      var upd = function () { state.fees[ch.id] = { pct: pctIn.value, fixed: fixIn.value }; saveState(); renderSell(); };
+      pctIn.addEventListener('input', upd); fixIn.addEventListener('input', upd);
+      box.appendChild(el('div', null, [
+        el('div', { class: 'feerow' }, [
+          el('div', { class: 'nm', text: ch.name }),
+          el('div', null, [el('label', { for: 'fee-pct-' + ch.id, text: 'Percent' }), el('div', { class: 'unit pct' }, [pctIn])]),
+          el('div', null, [el('label', { for: 'fee-fix-' + ch.id, text: 'Fixed' }), el('div', { class: 'unit', 'data-pre': '$' }, [fixIn])])
+        ]),
+        el('p', { class: 'hint', text: ch.hint })
+      ]));
+    });
+  }
+
+  function bindSell() {
+    Object.keys(SELL_FIELDS).forEach(function (id) {
+      var key = SELL_FIELDS[id], node = $(id);
+      node.value = state.sell[key];
+      node.addEventListener(node.tagName === 'SELECT' ? 'change' : 'input', function () {
+        state.sell[key] = node.value;
+        if (key !== 'name') state.sellSample = false;
+        saveState(); renderSell();
+      });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('input[name="shipmode"]'), function (r) {
+      r.checked = r.value === (state.sell.shipMode === 'buyer' ? 'buyer' : 'seller');
+      r.addEventListener('change', function () { state.sell.shipMode = r.value; state.sellSample = false; saveState(); renderSell(); });
+    });
+  }
+  function newSell() {
+    ['name', 'price', 'paid', 'ship', 'pack', 'local', 'trade'].forEach(function (k) { state.sell[k] = ''; });
+    state.sell.shipMode = 'seller'; state.sellSample = false;
+    Object.keys(SELL_FIELDS).forEach(function (id) { $(id).value = state.sell[SELL_FIELDS[id]]; });
+    Array.prototype.forEach.call(document.querySelectorAll('input[name="shipmode"]'), function (r) { r.checked = r.value === 'seller'; });
+    $('sellSaveMsg').textContent = '';
+    saveState(); renderSell();
+    window.scrollTo(0, 0);
+  }
+  $('newSellBtn').addEventListener('click', newSell);
+  $('newSellTop').addEventListener('click', newSell);
+
+  $('sellSaveBtn').addEventListener('click', function () {
+    var msg = $('sellSaveMsg');
+    if (!lastSell || !lastSell.rows.length) { msg.textContent = 'Enter the price you expect first.'; return; }
+    var best = lastSell.rows[0];
+    log.unshift(cleanDeal({ kind: 'own', name: $('sName').value.trim() || 'Untitled item', source: 'Own item  ·  ' + best.name, status: 'Planning', cost: 0, expProfit: best.net, soldNet: null, newPrice: null, created: isoDay() }));
+    saveLog(); renderLog();
+    msg.textContent = '';
+    msg.appendChild(document.createTextNode('Saved. '));
+    var a = el('a', { href: '#log', text: 'View the log' });
+    a.addEventListener('click', function (ev) { ev.preventDefault(); showTab('log'); });
+    msg.appendChild(a);
+  });
+
   /* ---------- Log ---------- */
   function dealLine(d) {
     var parts = [];
-    if (d.status === 'Sold' && d.soldNet != null) {
+    if (d.kind === 'own') {
+      if (d.status === 'Sold' && d.soldNet != null) parts.push({ t: 'Kept ', cls: '' }, { t: money(d.soldNet), cls: d.soldNet >= 0 ? 'pos' : 'neg' });
+      else parts.push({ t: 'Expected to keep ', cls: '' }, { t: money(d.expProfit), cls: d.expProfit >= 0 ? 'pos' : 'neg' });
+    } else if (d.status === 'Sold' && d.soldNet != null) {
       var actual = d.soldNet - d.cost;
       parts.push({ t: 'Actual profit ', cls: '' }, { t: money(actual), cls: actual >= 0 ? 'pos' : 'neg' });
       if (d.newPrice) parts.push({ t: '  ·  sold at ' + pct(d.soldNet / d.newPrice) + ' of new', cls: '' });
@@ -703,8 +1041,13 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
     dealLine(d).forEach(function (p) { node.appendChild(el('span', { class: p.cls, text: p.t })); });
   }
   function updateStats() {
-    var profit = 0, tied = 0, sold = 0, ratios = [];
+    var profit = 0, tied = 0, sold = 0, ratios = [], ownKept = 0, hasOwn = false;
     log.forEach(function (d) {
+      if (d.kind === 'own') {
+        hasOwn = true;
+        if (d.status === 'Sold' && d.soldNet != null) ownKept += d.soldNet;
+        return;
+      }
       if (d.status === 'Sold') {
         sold++;
         if (d.soldNet != null) { profit += d.soldNet - d.cost; if (d.newPrice) ratios.push(d.soldNet / d.newPrice); }
@@ -714,6 +1057,8 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
     $('statProfit').textContent = money(profit);
     $('statTied').textContent = money(tied);
     $('statSold').textContent = String(sold);
+    $('statOwnBox').hidden = !hasOwn;
+    $('statOwn').textContent = money(ownKept);
     $('statPct').textContent = ratios.length ? pct(ratios.reduce(function (a, b) { return a + b; }, 0) / ratios.length) : '-';
   }
   function moneyField(labelText, id, value, onChange) {
@@ -727,7 +1072,7 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
     $('logEmpty').hidden = log.length > 0;
     log.forEach(function (d) {
       var statusSel = el('select', { 'aria-label': 'Status for ' + d.name });
-      STATUSES.forEach(function (s) { var o = el('option', { text: s }); if (s === d.status) o.selected = true; statusSel.appendChild(o); });
+      (d.kind === 'own' ? OWN_STATUSES : STATUSES).forEach(function (s) { var o = el('option', { text: s }); if (s === d.status) o.selected = true; statusSel.appendChild(o); });
       statusSel.addEventListener('change', function () { d.status = statusSel.value; saveLog(); renderLog(); });
 
       var lineEl = el('p', { class: 'nums' });
@@ -744,13 +1089,13 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
           el('div', null, [el('div', { class: 'name', text: d.name }), el('div', { class: 'meta', text: d.source + '  ·  ' + d.created })])
         ]),
         el('div', null, [el('label', { text: 'Status' }), statusSel]),
-        el('p', { class: 'nums', text: 'Total cost ' + money(d.cost) }),
+        d.kind === 'own' ? null : el('p', { class: 'nums', text: 'Total cost ' + money(d.cost) }),
         lineEl
       ];
       if (d.status === 'Sold') {
         kids.push(moneyField('Sold for (what you kept after fees and shipping)', 'sold-' + d.id, d.soldNet, function (v) { d.soldNet = v; saveLog(); paintLine(lineEl, d); updateStats(); }));
       }
-      kids.push(moneyField('New retail price (optional)', 'new-' + d.id, d.newPrice, function (v) { d.newPrice = v > 0 ? v : null; saveLog(); paintLine(lineEl, d); updateStats(); }));
+      if (d.kind !== 'own') kids.push(moneyField('New retail price (optional)', 'new-' + d.id, d.newPrice, function (v) { d.newPrice = v > 0 ? v : null; saveLog(); paintLine(lineEl, d); updateStats(); }));
       kids.push(rm);
       list.appendChild(el('div', { class: 'deal' }, kids));
     });
@@ -759,11 +1104,14 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
 
   /* backup, restore, copy */
   function backupText() {
-    return JSON.stringify({ app: 'deal-desk', version: 2, exported: new Date().toISOString(), log: log }, null, 2);
+    return JSON.stringify({ app: 'deal-desk', version: 3, exported: new Date().toISOString(), log: log }, null, 2);
   }
   function summaryText() {
     if (!log.length) return 'No deals saved yet.';
     return log.map(function (d) {
+      if (d.kind === 'own') {
+        return d.name + ' | ' + d.source + ' | ' + d.status + ' | ' + (d.status === 'Sold' && d.soldNet != null ? 'kept ' + money(d.soldNet) : 'expected to keep ' + money(d.expProfit));
+      }
       var tail = d.status === 'Sold' && d.soldNet != null ? 'sold net ' + money(d.soldNet) + ', actual profit ' + money(d.soldNet - d.cost) : 'expected profit ' + money(d.expProfit);
       return d.name + ' | ' + d.source + ' | ' + d.status + ' | cost ' + money(d.cost) + ' | ' + tail;
     }).join('\n');
@@ -875,11 +1223,14 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
 
   /* ---------- go ---------- */
   bindCheck();
+  buildFeeBox();
+  bindSell();
   updateSearch();
   renderCheck();
+  renderSell();
   renderLog();
   showTab(state.tab);
-  window.DealDesk = { calc: calc };
+  window.DealDesk = { calc: calc, sellCalc: sellCalc };
 
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
     window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
