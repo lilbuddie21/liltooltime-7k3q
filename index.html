@@ -33,6 +33,10 @@
   --warn-bg: #fbefcf;
   --bad: #b3261e;
   --bad-bg: #fbe4e1;
+  /* Chart colors: blue for gains, red for losses (passes the color-blind check; green and red does not). */
+  --gain: #257de0;
+  --loss: #ec4647;
+  --vz-base: #b4c0bc;
   --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   color-scheme: light;
 }
@@ -52,6 +56,9 @@
     --warn-bg: #3b2f10;
     --bad: #f2837a;
     --bad-bg: #432019;
+    --gain: #338ced;
+    --loss: #eb6263;
+    --vz-base: #4a5a56;
     color-scheme: dark;
   }
 }
@@ -76,7 +83,7 @@ p { margin: 0; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
 
 label, .label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
-input[type="text"], select {
+input[type="text"], input[type="date"], select {
   width: 100%;
   min-height: 46px;
   font: inherit;
@@ -178,6 +185,45 @@ button:active { filter: brightness(0.92); }
 details.more > summary { cursor: pointer; font-weight: 700; min-height: 30px; display: flex; align-items: center; }
 .linkrow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .linkrow a { display: flex; align-items: center; justify-content: center; text-align: center; min-height: 46px; padding: 6px 8px; border: 1px solid var(--accent); border-radius: 10px; color: var(--accent); font-weight: 650; font-size: 14.5px; text-decoration: none; background: var(--surface); }
+.col { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
+.plhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.hero { margin: 0; font-size: clamp(34px, 11vw, 48px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; }
+.stat .sm { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+.vzbox { position: relative; display: flex; flex-direction: column; gap: 6px; }
+.vzbox h4 { margin: 0; font-size: 14.5px; font-weight: 700; }
+.vz { width: 100%; height: auto; display: block; }
+.vz text { font: 13.5px var(--sans); fill: var(--muted); paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
+.vz text.val { fill: var(--ink); font-weight: 650; }
+.vz .gridline { stroke: var(--line); stroke-width: 1; }
+.vz .baseline { stroke: var(--vz-base); stroke-width: 1; }
+.vz .gain { fill: var(--gain); }
+.vz .loss { fill: var(--loss); }
+.vz .line { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.vz .dot { fill: var(--ink); stroke: var(--surface); stroke-width: 2; }
+.vz .cross { stroke: var(--vz-base); stroke-width: 1; }
+.vz .hit { fill: transparent; cursor: pointer; }
+.vz .hit.scrub { touch-action: pan-y; cursor: crosshair; }
+.vz g.row:hover .bar, .vz g.row.on .bar { opacity: 0.8; }
+.vz g.row:focus { outline: none; }
+.vz g.row:focus-visible .hit { stroke: var(--accent); stroke-width: 2; }
+.vz .hit.scrub:focus-visible { stroke: var(--accent); stroke-width: 2; }
+.tip { position: absolute; z-index: 6; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; box-shadow: 0 6px 16px -6px rgba(0, 0, 0, 0.35); font-size: 13px; line-height: 1.35; width: max-content; max-width: 230px; }
+.tip b { display: block; font-size: 17px; font-weight: 800; }
+.tip span { display: block; color: var(--muted); overflow-wrap: anywhere; }
+.legend { display: flex; gap: 16px; font-size: 13px; color: var(--muted); align-items: center; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend svg { width: 12px; height: 12px; }
+.legend svg .gain { fill: var(--gain); }
+.legend svg .loss { fill: var(--loss); }
+#plBody .stat .v { font-size: clamp(16px, 5.2vw, 21px); white-space: nowrap; }
+#plBody .stat .sm { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tablewrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table.plt { border-collapse: collapse; width: 100%; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+table.plt th, table.plt td { text-align: right; padding: 7px 8px; border-top: 1px solid var(--line); white-space: nowrap; }
+table.plt th { color: var(--muted); font-weight: 600; font-size: 12.5px; border-top: 0; }
+table.plt th:first-child, table.plt td:first-child, table.plt th:nth-child(2), table.plt td:nth-child(2) { text-align: left; }
+table.plt td:nth-child(2) { white-space: normal; min-width: 96px; }
+table.plt td:nth-child(3) { font-weight: 650; }
 .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .stat { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
 .stat .k { font-size: 12.5px; color: var(--muted); font-weight: 600; }
@@ -503,6 +549,63 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
       <div class="stat"><div class="k">Typical sold price vs new</div><div class="v" id="statPct">-</div></div>
       <div class="stat" id="statOwnBox" style="grid-column: 1 / -1;" hidden><div class="k">Kept from selling your own items</div><div class="v" id="statOwn">$0.00</div></div>
     </div>
+    <div class="card" id="plCard" aria-labelledby="h-pl">
+      <div class="plhead">
+        <h3 id="h-pl">Profit and loss</h3>
+        <button type="button" class="ghost small" id="plToggle" aria-pressed="false">Table view</button>
+      </div>
+      <p class="sub" id="plEmpty">Mark a deal as Sold and enter what you kept, or add a past sale below. Your profits and losses show up here.</p>
+      <div id="plBody" class="col" hidden>
+        <div>
+          <p class="label" id="plNetLabel" style="margin:0 0 2px;">Net profit</p>
+          <p class="hero" id="plNet">-</p>
+          <p class="sub" id="plLine"></p>
+        </div>
+        <div class="stats">
+          <div class="stat"><div class="k">Win rate</div><div class="v" id="plWin">-</div><div class="sm" id="plWinSub"></div></div>
+          <div class="stat"><div class="k">Return on money spent</div><div class="v" id="plRet">-</div><div class="sm" id="plRetSub"></div></div>
+          <div class="stat"><div class="k">Best deal</div><div class="v" id="plBest">-</div><div class="sm" id="plBestSub"></div></div>
+          <div class="stat"><div class="k">Biggest loss</div><div class="v" id="plWorst">-</div><div class="sm" id="plWorstSub"></div></div>
+        </div>
+        <div id="plCharts" class="col" style="gap:18px;">
+          <div class="vzbox" id="plBars"></div>
+          <div class="vzbox" id="plRun"></div>
+        </div>
+      </div>
+      <div id="plTable" class="col" hidden></div>
+      <p class="hint" id="plHint" hidden>Only deals marked Sold with an amount kept are counted. Things you sell from your own stuff are counted separately above.</p>
+    </div>
+
+    <div class="card">
+      <details class="more" id="psBox">
+        <summary>Add a past sale</summary>
+        <div class="col">
+          <p class="sub">For something you already sold. It goes into the log as Sold and into the charts above.</p>
+          <div>
+            <label for="psName">Item</label>
+            <input type="text" id="psName" autocomplete="off" placeholder="DeWalt DW705 miter saw">
+          </div>
+          <div class="grid2">
+            <div>
+              <label for="psCost">Total cost</label>
+              <div class="unit" data-pre="$"><input type="text" id="psCost" inputmode="decimal" autocomplete="off"></div>
+            </div>
+            <div>
+              <label for="psKept">What you kept</label>
+              <div class="unit" data-pre="$"><input type="text" id="psKept" inputmode="decimal" autocomplete="off"></div>
+            </div>
+          </div>
+          <p class="hint" style="margin-top:0;">Total cost includes the price, tax, gas and anything else. What you kept is the sale price after fees and shipping.</p>
+          <div>
+            <label for="psDate">Sold on</label>
+            <input type="date" id="psDate">
+          </div>
+          <button type="button" id="psAdd">Add sale</button>
+          <p class="msg" id="psMsg"></p>
+        </div>
+      </details>
+    </div>
+
     <div id="dealList" style="display:flex; flex-direction:column; gap:12px;"></div>
     <p class="empty" id="logEmpty">No deals saved yet. Check a deal, then tap Save to log.</p>
     <div class="card">
@@ -575,7 +678,20 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
     (kids || []).forEach(function (c) { if (c) e.appendChild(c); });
     return e;
   }
-  function isoDay(d) { return (d || new Date()).toISOString().slice(0, 10); }
+  /* Local calendar day (not UTC), so evening entries and the daily checklist use the phone's own date. */
+  function isoDay(d) {
+    d = d || new Date();
+    var m = d.getMonth() + 1, day = d.getDate();
+    return d.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (day < 10 ? '0' : '') + day;
+  }
+  function validDay(s) { return typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null; }
+  var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  function fmtDay(s, withYear) {
+    var p = validDay(s) ? s.split('-') : null;
+    if (!p) return '';
+    return MONTHS[Number(p[1]) - 1] + ' ' + Number(p[2]) + (withYear ? ', ' + p[0] : '');
+  }
+  function signed(n) { return (n < 0 ? '−' : '+') + money(Math.abs(n)); }
 
   /* ---------- profit math (pure) ---------- */
   function calc(i) {
@@ -653,7 +769,8 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
       expProfit: exp,
       soldNet: d.soldNet != null && d.soldNet !== '' && isFinite(d.soldNet) ? Number(d.soldNet) : null,
       newPrice: d.newPrice != null && d.newPrice !== '' && isFinite(d.newPrice) && Number(d.newPrice) > 0 ? Number(d.newPrice) : null,
-      created: typeof d.created === 'string' ? d.created.slice(0, 10) : isoDay()
+      created: typeof d.created === 'string' ? d.created.slice(0, 10) : isoDay(),
+      soldOn: validDay(d.soldOn)
     };
   }
 
@@ -1059,6 +1176,7 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
     $('statSold').textContent = String(sold);
     $('statOwnBox').hidden = !hasOwn;
     $('statOwn').textContent = money(ownKept);
+    renderPL();
     $('statPct').textContent = ratios.length ? pct(ratios.reduce(function (a, b) { return a + b; }, 0) / ratios.length) : '-';
   }
   function moneyField(labelText, id, value, onChange) {
@@ -1067,13 +1185,23 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
     inp.addEventListener('input', function () { onChange(inp.value.trim() === '' ? null : num(inp.value)); });
     return el('div', null, [el('label', { for: id, text: labelText }), el('div', { class: 'unit', 'data-pre': '$' }, [inp])]);
   }
+  function dateField(labelText, id, value, onChange) {
+    var inp = el('input', { type: 'date', id: id });
+    inp.value = value || '';
+    inp.addEventListener('change', function () { onChange(validDay(inp.value)); });
+    return el('div', null, [el('label', { for: id, text: labelText }), inp]);
+  }
   function renderLog() {
     var list = $('dealList'); list.textContent = '';
     $('logEmpty').hidden = log.length > 0;
     log.forEach(function (d) {
       var statusSel = el('select', { 'aria-label': 'Status for ' + d.name });
       (d.kind === 'own' ? OWN_STATUSES : STATUSES).forEach(function (s) { var o = el('option', { text: s }); if (s === d.status) o.selected = true; statusSel.appendChild(o); });
-      statusSel.addEventListener('change', function () { d.status = statusSel.value; saveLog(); renderLog(); });
+      statusSel.addEventListener('change', function () {
+        d.status = statusSel.value;
+        if (d.status === 'Sold' && !d.soldOn) d.soldOn = isoDay();
+        saveLog(); renderLog();
+      });
 
       var lineEl = el('p', { class: 'nums' });
       paintLine(lineEl, d);
@@ -1094,6 +1222,7 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
       ];
       if (d.status === 'Sold') {
         kids.push(moneyField('Sold for (what you kept after fees and shipping)', 'sold-' + d.id, d.soldNet, function (v) { d.soldNet = v; saveLog(); paintLine(lineEl, d); updateStats(); }));
+        kids.push(dateField('Sold on', 'soldon-' + d.id, d.soldOn || d.created, function (v) { d.soldOn = v; saveLog(); updateStats(); }));
       }
       if (d.kind !== 'own') kids.push(moneyField('New retail price (optional)', 'new-' + d.id, d.newPrice, function (v) { d.newPrice = v > 0 ? v : null; saveLog(); paintLine(lineEl, d); updateStats(); }));
       kids.push(rm);
@@ -1101,6 +1230,260 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
     });
     updateStats();
   }
+
+  /* ---------- Profit and loss: numbers, charts and a table, all from the log ---------- */
+  var NS = 'http://www.w3.org/2000/svg';
+  function sv(tag, attrs, kids) {
+    var e = document.createElementNS(NS, tag);
+    if (attrs) Object.keys(attrs).forEach(function (k) { if (k === 'text') e.textContent = attrs[k]; else e.setAttribute(k, attrs[k]); });
+    (kids || []).forEach(function (c) { if (c) e.appendChild(c); });
+    return e;
+  }
+  function pctSigned(x) { return (x < 0 ? '−' : '') + Math.round(Math.abs(x) * 100) + '%'; }
+  function clip(s, n) { return s.length > n ? s.slice(0, n - 1) + '…' : s; }
+  function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
+
+  /* Sold deals with an amount kept, oldest first. Things sold from your own stuff have no cost, so they are not here. */
+  function plRows() {
+    var rows = [];
+    log.forEach(function (d, idx) {
+      if (d.kind === 'own' || d.status !== 'Sold' || d.soldNet == null) return;
+      var profit = d.soldNet - d.cost;
+      rows.push({ id: d.id, name: d.name, date: d.soldOn || d.created, cost: d.cost, kept: d.soldNet, profit: profit, ret: d.cost > 0 ? profit / d.cost : null, idx: idx });
+    });
+    rows.sort(function (a, b) { return a.date < b.date ? -1 : (a.date > b.date ? 1 : b.idx - a.idx); });
+    return rows;
+  }
+  function plSummary(rows) {
+    var s = { n: rows.length, net: 0, spent: 0, wins: 0, losses: 0, even: 0, best: null, worst: null };
+    rows.forEach(function (r) {
+      s.net += r.profit; s.spent += r.cost;
+      if (r.profit > 0.004) s.wins++; else if (r.profit < -0.004) s.losses++; else s.even++;
+      if (!s.best || r.profit > s.best.profit) s.best = r;
+      if (r.profit < -0.004 && (!s.worst || r.profit < s.worst.profit)) s.worst = r;
+    });
+    s.winRate = s.n ? s.wins / s.n : null;
+    s.ret = s.spent > 0 ? s.net / s.spent : null;
+    return s;
+  }
+
+  function niceTicks(min, max, count) {
+    if (max - min < 4) max = min + 4;
+    var raw = (max - min) / count, mag = Math.pow(10, Math.floor(Math.log(raw) / Math.LN10)), f = raw / mag;
+    var step = (f >= 7.5 ? 10 : f >= 3.5 ? 5 : f >= 1.5 ? 2 : 1) * mag;
+    var lo = Math.floor(min / step + 1e-9) * step, hi = Math.ceil(max / step - 1e-9) * step, ticks = [];
+    for (var v = lo; v <= hi + step / 2; v += step) ticks.push(Math.round(v * 1e6) / 1e6);
+    return { lo: lo, hi: hi, ticks: ticks };
+  }
+  function tickMoney(v) {
+    var a = Math.abs(v);
+    return (v < 0 ? '−' : '') + (a >= 10000 ? '$' + Math.round(a / 1000) + 'K' : '$' + Math.round(a).toLocaleString('en-US'));
+  }
+  function barPath(x0, w, y, h, dir) {
+    var r = Math.min(4, w / 2, h / 2);
+    if (dir > 0) return 'M' + x0 + ',' + y + 'H' + (x0 + w - r) + 'a' + r + ',' + r + ' 0 0 1 ' + r + ',' + r + 'V' + (y + h - r) + 'a' + r + ',' + r + ' 0 0 1 ' + (-r) + ',' + r + 'H' + x0 + 'Z';
+    return 'M' + x0 + ',' + y + 'H' + (x0 - w + r) + 'a' + r + ',' + r + ' 0 0 0 ' + (-r) + ',' + r + 'V' + (y + h - r) + 'a' + r + ',' + r + ' 0 0 0 ' + r + ',' + r + 'H' + x0 + 'Z';
+  }
+
+  /* one tooltip per chart; it adds detail and never holds the only copy of a number (the table view has them all) */
+  var clears = [];
+  function hideTips() {
+    Array.prototype.forEach.call(document.querySelectorAll('.tip'), function (t) { t.hidden = true; });
+    clears.forEach(function (f) { f(); });
+  }
+  document.addEventListener('pointerdown', function (e) { if (!(e.target.closest && e.target.closest('.hit'))) hideTips(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hideTips(); });
+  function origin(box, svg) { var a = svg.getBoundingClientRect(), b = box.getBoundingClientRect(); return { x: a.left - b.left, y: a.top - b.top, sc: a.width / 360 }; }
+  function makeTip(box) { var t = el('div', { class: 'tip', role: 'status' }); t.hidden = true; box.appendChild(t); return t; }
+  /* Tooltip sits above the mark when there is room, otherwise below it. yTop/yBottom are the mark's edges inside the box. */
+  function showTip(box, tip, valueText, lines, ax, yTop, yBottom) {
+    tip.textContent = '';
+    tip.appendChild(el('b', { text: valueText }));
+    lines.forEach(function (l) { tip.appendChild(el('span', { text: l })); });
+    tip.hidden = false;
+    var bw = box.clientWidth, tw = tip.offsetWidth, th = tip.offsetHeight;
+    var left = Math.max(2, Math.min(ax - tw / 2, bw - tw - 2));
+    var top = yTop - th - 8; if (top < 0) { top = 0; if (th > yTop - 2) top = yBottom + 8; }
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function legendItem(cls, path, label) {
+    return el('span', null, [sv('svg', { viewBox: '0 0 12 12', 'aria-hidden': 'true' }, [sv('path', { class: cls, d: path })]), document.createTextNode(label)]);
+  }
+
+  /* Chart 1: profit or loss on each deal, bars out from a zero line (right = gain, left = loss) */
+  function renderBars(box, rows) {
+    box.textContent = '';
+    var show = rows.slice(-10).reverse();
+    box.appendChild(el('h4', { text: rows.length > 10 ? 'Profit or loss, latest 10 of ' + rows.length + ' deals' : 'Profit or loss on each deal' }));
+    var W = 360, rowH = 46, top = 4, foot = 24, H = top + show.length * rowH + foot;
+    var maxP = 0, maxL = 0;
+    show.forEach(function (r) { if (r.profit > maxP) maxP = r.profit; if (-r.profit > maxL) maxL = -r.profit; });
+    var room = 80, L = 8, R = W - 8;
+    var avail = (R - L) - (maxP > 0 ? room : 0) - (maxL > 0 ? room : 0);
+    var scale = (maxP + maxL) > 0 ? avail / (maxP + maxL) : 0;
+    var x0 = L + (maxL > 0 ? room : 0) + maxL * scale;
+    var svg = sv('svg', { class: 'vz', viewBox: '0 0 ' + W + ' ' + H, role: 'group', 'aria-label': 'Bar chart of profit or loss on each of your latest sold deals. Bars to the right are gains and bars to the left are losses. The table view lists every number.' });
+    var tip = makeTip(box);
+    var rowsG = [];
+    show.forEach(function (r, i) {
+      var y = top + i * rowH, by = y + 19, bh = 16;
+      var w = Math.abs(r.profit) * scale; if (r.profit !== 0 && w < 3) w = 3;
+      var gain = r.profit >= 0, tipX = gain ? x0 + w : x0 - w;
+      var g = sv('g', { class: 'row', tabindex: '0', role: 'img', 'aria-label': r.name + ', sold ' + fmtDay(r.date, true) + ': ' + (r.profit >= 0 ? 'gain ' : 'loss ') + money(Math.abs(r.profit)) });
+      g.appendChild(sv('text', { x: L, y: y + 13, text: clip(r.name, 38) }));
+      if (r.profit !== 0) g.appendChild(sv('path', { class: 'bar ' + (gain ? 'gain' : 'loss'), d: barPath(x0, w, by, bh, gain ? 1 : -1) }));
+      g.appendChild(sv('text', { class: 'val', x: gain ? tipX + 6 : tipX - 6, y: by + 12, 'text-anchor': gain ? 'start' : 'end', text: signed(r.profit) }));
+      g.appendChild(sv('rect', { class: 'hit', x: 0, y: y - 2, width: W, height: rowH }));
+      var open = function () {
+        hideTips(); g.classList.add('on');
+        var o = origin(box, svg), sc = o.sc;
+        showTip(box, tip, signed(r.profit), [r.name, 'Sold ' + fmtDay(r.date, true), 'Cost ' + money(r.cost) + ', kept ' + money(r.kept), r.ret == null ? '' : pctSigned(r.ret) + ' return'].filter(Boolean),
+          o.x + Math.max(40, Math.min(W - 40, tipX)) * sc, o.y + (y + 4) * sc, o.y + (y + rowH - 6) * sc);
+      };
+      g.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse') open(); });
+      g.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse') hideTips(); });
+      g.addEventListener('click', open);
+      g.addEventListener('focus', open);
+      g.addEventListener('blur', hideTips);
+      rowsG.push(g);
+    });
+    svg.appendChild(sv('line', { class: 'baseline', x1: x0, x2: x0, y1: top, y2: H - foot + 6 }));
+    rowsG.forEach(function (g) { svg.appendChild(g); });
+    svg.appendChild(sv('text', { x: x0, y: H - 6, 'text-anchor': x0 <= L + 6 ? 'start' : (x0 >= R - 6 ? 'end' : 'middle'), text: '$0' }));
+    clears.push(function () { rowsG.forEach(function (g) { g.classList.remove('on'); }); });
+    box.appendChild(svg);
+    box.appendChild(el('div', { class: 'legend' }, [
+      legendItem('gain', 'M6 2L11 10H1Z', 'Gain'),
+      legendItem('loss', 'M6 10L11 2H1Z', 'Loss')
+    ]));
+  }
+
+  /* Chart 2: running total after each sale, in the order they sold */
+  function renderRun(box, rows) {
+    box.textContent = '';
+    box.appendChild(el('h4', { text: 'Running total' }));
+    if (rows.length < 2) { box.appendChild(el('p', { class: 'sub', text: 'The running total appears after your second sale.' })); return; }
+    var cum = [], t = 0;
+    rows.forEach(function (r) { t += r.profit; cum.push(t); });
+    var n = rows.length, W = 360, H = 180, L = 52, R = 88, T = 12, B = 28, pw = W - L - R, ph = H - T - B;
+    var nt = niceTicks(Math.min.apply(null, cum.concat(0)), Math.max.apply(null, cum.concat(0)), 4);
+    var xs = function (i) { return L + i * pw / (n - 1); };
+    var ys = function (v) { return T + (nt.hi - v) / (nt.hi - nt.lo) * ph; };
+    var svg = sv('svg', { class: 'vz', viewBox: '0 0 ' + W + ' ' + H, role: 'group', 'aria-label': 'Line chart of your running total after each sale. It ends at ' + signed(cum[n - 1]) + '. The table view lists every number.' });
+    var tip = makeTip(box);
+    nt.ticks.forEach(function (tv) {
+      svg.appendChild(sv('line', { class: tv === 0 ? 'baseline' : 'gridline', x1: L, x2: W - R, y1: ys(tv), y2: ys(tv) }));
+      svg.appendChild(sv('text', { x: L - 8, y: ys(tv) + 4, 'text-anchor': 'end', text: tickMoney(tv) }));
+    });
+    var d = cum.map(function (v, i) { return (i ? 'L' : 'M') + xs(i).toFixed(1) + ',' + ys(v).toFixed(1); }).join('');
+    svg.appendChild(sv('path', { class: 'line', d: d }));
+    svg.appendChild(sv('text', { x: L, y: H - 8, text: fmtDay(rows[0].date) }));
+    svg.appendChild(sv('text', { x: W - R, y: H - 8, 'text-anchor': 'end', text: fmtDay(rows[n - 1].date) }));
+    svg.appendChild(sv('circle', { class: 'dot', cx: xs(n - 1), cy: ys(cum[n - 1]), r: 4.5 }));
+    svg.appendChild(sv('text', { class: 'val', x: xs(n - 1) + 9, y: ys(cum[n - 1]) + 4, text: signed(cum[n - 1]) }));
+    var cross = sv('line', { class: 'cross', y1: T, y2: T + ph, visibility: 'hidden' });
+    var adot = sv('circle', { class: 'dot', r: 5, visibility: 'hidden' });
+    var hit = sv('rect', { class: 'hit scrub', x: L - 6, y: T - 4, width: pw + 12, height: ph + 8, tabindex: '0', role: 'img', 'aria-label': 'Running total. Use the left and right arrow keys to step through your sales.' });
+    svg.appendChild(cross); svg.appendChild(adot); svg.appendChild(hit);
+    var cur = n - 1;
+    function activate(i) {
+      cur = i;
+      var r = rows[i], o = origin(box, svg), sc = o.sc;
+      cross.setAttribute('x1', xs(i)); cross.setAttribute('x2', xs(i)); cross.setAttribute('visibility', 'visible');
+      adot.setAttribute('cx', xs(i)); adot.setAttribute('cy', ys(cum[i])); adot.setAttribute('visibility', 'visible');
+      showTip(box, tip, signed(cum[i]), ['Total after ' + r.name, 'Sold ' + fmtDay(r.date, true), 'This deal ' + signed(r.profit)], o.x + xs(i) * sc, o.y + ys(cum[i]) * sc - 6, o.y + ys(cum[i]) * sc + 10);
+    }
+    function clear() { cross.setAttribute('visibility', 'hidden'); adot.setAttribute('visibility', 'hidden'); tip.hidden = true; }
+    function nearest(clientX) {
+      var rect = svg.getBoundingClientRect(), vx = (clientX - rect.left) * W / rect.width;
+      return Math.max(0, Math.min(n - 1, Math.round((vx - L) / (pw / (n - 1)))));
+    }
+    hit.addEventListener('pointermove', function (e) { activate(nearest(e.clientX)); });
+    hit.addEventListener('pointerdown', function (e) { activate(nearest(e.clientX)); });
+    hit.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse') clear(); });
+    hit.addEventListener('focus', function () { activate(cur); });
+    hit.addEventListener('blur', clear);
+    hit.addEventListener('keydown', function (e) {
+      var k = e.key;
+      if (k === 'ArrowLeft') activate(Math.max(0, cur - 1));
+      else if (k === 'ArrowRight') activate(Math.min(n - 1, cur + 1));
+      else if (k === 'Home') activate(0);
+      else if (k === 'End') activate(n - 1);
+      else return;
+      e.preventDefault();
+    });
+    clears.push(clear);
+    box.appendChild(svg);
+  }
+
+  /* The table twin of both charts: every number, no hovering needed */
+  function renderTable(rows) {
+    var wrap = $('plTable'); wrap.textContent = '';
+    var cum = [], t = 0;
+    rows.forEach(function (r) { t += r.profit; cum.push(t); });
+    var multiYear = rows[0].date.slice(0, 4) !== rows[rows.length - 1].date.slice(0, 4);
+    var tbl = el('table', { class: 'plt', 'aria-label': 'Sold deals, newest first' });
+    var head = el('tr');
+    ['Sold', 'Item', 'Profit', 'Return', 'Cost', 'Kept', 'Total'].forEach(function (h) { head.appendChild(el('th', { scope: 'col', text: h })); });
+    tbl.appendChild(el('thead', null, [head]));
+    var body = el('tbody');
+    for (var i = rows.length - 1; i >= 0; i--) {
+      var r = rows[i];
+      body.appendChild(el('tr', null, [
+        el('td', { text: fmtDay(r.date, multiYear) }), el('td', { text: r.name }),
+        el('td', { text: signed(r.profit) }), el('td', { text: r.ret == null ? '-' : pctSigned(r.ret) }),
+        el('td', { text: money(r.cost) }), el('td', { text: money(r.kept) }), el('td', { text: signed(cum[i]) })
+      ]));
+    }
+    tbl.appendChild(body);
+    wrap.appendChild(el('div', { class: 'tablewrap' }, [tbl]));
+    wrap.appendChild(el('p', { class: 'sub', text: 'Newest first. Swipe sideways for cost, what you kept and the running total.' }));
+  }
+
+  var plTableOn = false;
+  function renderPL() {
+    var rows = plRows(), has = rows.length > 0;
+    clears = [];
+    $('plEmpty').hidden = has;
+    $('plToggle').hidden = !has;
+    $('plHint').hidden = !has;
+    $('plBody').hidden = !has || plTableOn;
+    $('plTable').hidden = !has || !plTableOn;
+    if (!has) return;
+    var s = plSummary(rows);
+    $('plNetLabel').textContent = s.net < 0 ? 'Net loss' : 'Net profit';
+    $('plNet').textContent = signed(s.net);
+    $('plLine').textContent = plural(s.n, 'sold deal', 'sold deals') + ': ' + plural(s.wins, 'gain', 'gains') + ', ' + plural(s.losses, 'loss', 'losses') + (s.even ? ', ' + s.even + ' break-even' : '') + '.';
+    $('plWin').textContent = s.wins + ' of ' + s.n;
+    $('plWinSub').textContent = pct(s.winRate) + ' made money';
+    $('plRet').textContent = s.ret == null ? '-' : pctSigned(s.ret);
+    $('plRetSub').textContent = 'on ' + money(s.spent) + ' spent';
+    $('plBest').textContent = signed(s.best.profit);
+    $('plBestSub').textContent = s.best.name;
+    $('plWorst').textContent = s.worst ? signed(s.worst.profit) : 'None';
+    $('plWorstSub').textContent = s.worst ? s.worst.name : 'No losing deals yet';
+    if (plTableOn) renderTable(rows);
+    else { renderBars($('plBars'), rows); renderRun($('plRun'), rows); }
+  }
+  $('plToggle').addEventListener('click', function () {
+    plTableOn = !plTableOn;
+    this.textContent = plTableOn ? 'Chart view' : 'Table view';
+    this.setAttribute('aria-pressed', plTableOn ? 'true' : 'false');
+    renderPL();
+  });
+
+  /* add a sale from the past straight into the log as Sold */
+  $('psDate').value = isoDay();
+  $('psAdd').addEventListener('click', function () {
+    var msg = $('psMsg');
+    if ($('psKept').value.trim() === '') { msg.textContent = 'Enter what you kept after fees and shipping. Use 0 if it sold for nothing.'; return; }
+    var cost = num($('psCost').value), kept = num($('psKept').value), day = validDay($('psDate').value) || isoDay();
+    log.unshift(cleanDeal({ kind: 'flip', name: $('psName').value.trim() || 'Past sale', source: 'Past sale', status: 'Sold', cost: cost, expProfit: kept - cost, soldNet: kept, newPrice: null, created: day, soldOn: day }));
+    saveLog(); renderLog();
+    ['psName', 'psCost', 'psKept'].forEach(function (id) { $(id).value = ''; });
+    $('psDate').value = isoDay();
+    msg.textContent = 'Added. ' + (kept - cost >= 0 ? 'Profit ' : 'Loss ') + money(Math.abs(kept - cost)) + '.';
+  });
 
   /* backup, restore, copy */
   function backupText() {
@@ -1230,7 +1613,7 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
   renderSell();
   renderLog();
   showTab(state.tab);
-  window.DealDesk = { calc: calc, sellCalc: sellCalc };
+  window.DealDesk = { calc: calc, sellCalc: sellCalc, plRows: plRows, plSummary: plSummary };
 
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
     window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
