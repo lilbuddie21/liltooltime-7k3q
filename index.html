@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Deal Desk</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="Find, price and track power tool resale deals.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Deal Desk">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f2f5f4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101614" media="(prefers-color-scheme: dark)">
+<meta name="format-detection" content="telephone=no">
+<style>
+/* Layout idea: one phone column, four tabs along the bottom. The result card stays pinned while she edits numbers. */
+:root {
+  --bg: #f2f5f4;
+  --surface: #ffffff;
+  --ink: #17211f;
+  --muted: #586763;
+  --line: #d6dedb;
+  --accent: #0b6a62;
+  --accent-ink: #ffffff;
+  --accent-soft: #dff0ed;
+  --good: #17703f;
+  --good-bg: #e0f3e8;
+  --warn: #8a5a00;
+  --warn-bg: #fbefcf;
+  --bad: #b3261e;
+  --bad-bg: #fbe4e1;
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #101614;
+    --surface: #18201e;
+    --ink: #e7eeec;
+    --muted: #9aaaa5;
+    --line: #2b3835;
+    --accent: #3cb7a9;
+    --accent-ink: #06201d;
+    --accent-soft: #17332f;
+    --good: #5cc785;
+    --good-bg: #163a26;
+    --warn: #e6b94a;
+    --warn-bg: #3b2f10;
+    --bad: #f2837a;
+    --bad-bg: #432019;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.45 var(--sans);
+  padding-top: env(safe-area-inset-top);
+}
+.app { max-width: 560px; margin: 0 auto; padding: 0 16px calc(92px + env(safe-area-inset-bottom)); }
+header.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 0 4px; }
+h1 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
+h2 { margin: 0; font-size: 21px; font-weight: 750; letter-spacing: -0.01em; }
+h3 { margin: 0; font-size: 16px; font-weight: 700; }
+p { margin: 0; }
+.sub { color: var(--muted); font-size: 15px; }
+.view { display: none; flex-direction: column; gap: 16px; padding-top: 8px; }
+.view.active { display: flex; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+
+label, .label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+input[type="text"], select {
+  width: 100%;
+  min-height: 46px;
+  font: inherit;
+  font-size: 16px;               /* 16px stops iOS from zooming the page on focus */
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-variant-numeric: tabular-nums;
+  -webkit-appearance: none;
+  appearance: none;
+}
+select {
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 18px) 55%, calc(100% - 13px) 55%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 34px;
+}
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.hint { font-size: 13px; color: var(--muted); margin-top: 4px; }
+.unit { position: relative; }
+.unit input { padding-left: 26px; }
+.unit::before { content: attr(data-pre); position: absolute; left: 12px; top: 0; bottom: 0; display: flex; align-items: center; color: var(--muted); pointer-events: none; }
+.unit.pct input { padding-left: 12px; padding-right: 28px; }
+.unit.pct::after { content: "%"; position: absolute; right: 12px; top: 0; bottom: 0; display: flex; align-items: center; color: var(--muted); pointer-events: none; }
+.unit.pct::before { content: none; }
+
+button {
+  font: inherit; font-weight: 650; font-size: 16px;
+  min-height: 46px; padding: 8px 16px;
+  border-radius: 10px; border: 1px solid var(--accent);
+  background: var(--accent); color: var(--accent-ink);
+  cursor: pointer;
+}
+button.ghost { background: transparent; color: var(--accent); }
+button.danger { border-color: var(--bad); color: var(--bad); background: transparent; }
+button.small { min-height: 38px; font-size: 14px; padding: 4px 12px; }
+button:active { filter: brightness(0.92); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { position: relative; }
+.chip input { position: absolute; inset: 0; opacity: 0; margin: 0; width: 100%; height: 100%; cursor: pointer; }
+.chip span { display: inline-flex; align-items: center; min-height: 38px; padding: 4px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-weight: 550; font-size: 14.5px; }
+.chip input:checked + span { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.chip input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.seg { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.seg label { margin: 0; position: relative; }
+.seg input { position: absolute; inset: 0; opacity: 0; margin: 0; width: 100%; height: 100%; cursor: pointer; }
+.seg span { display: flex; align-items: center; justify-content: center; min-height: 46px; padding: 6px 8px; font-weight: 650; font-size: 15px; color: var(--muted); background: var(--surface); text-align: center; }
+.seg input:checked + span { background: var(--accent); color: var(--accent-ink); }
+.seg input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.launch { display: flex; flex-direction: column; gap: 10px; }
+.launch a { display: flex; flex-direction: column; gap: 2px; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--accent); background: var(--accent-soft); color: var(--ink); text-decoration: none; }
+.launch a strong { font-size: 18px; }
+.launch a small { color: var(--muted); font-size: 13px; }
+.query { font-size: 14px; color: var(--muted); }
+.query b { color: var(--ink); }
+.tips { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; color: var(--ink); font-size: 15px; }
+
+.result { position: sticky; top: 0; z-index: 4; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 8px 14px; box-shadow: 0 8px 14px -10px rgba(0, 0, 0, 0.35); }
+.vrow { display: flex; align-items: center; gap: 10px; }
+.pill { font-weight: 800; font-size: 14px; letter-spacing: 0.03em; padding: 4px 12px; border-radius: 999px; background: var(--bg); color: var(--muted); }
+.pill.buy { background: var(--good-bg); color: var(--good); }
+.pill.marginal { background: var(--warn-bg); color: var(--warn); }
+.pill.pass { background: var(--bad-bg); color: var(--bad); }
+.profit { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.profit.neg { color: var(--bad); }
+.roi { font-size: 13.5px; color: var(--muted); margin-left: auto; text-align: right; line-height: 1.2; }
+.ceiling { background: var(--accent-soft); border-radius: 10px; padding: 8px 12px; font-size: 15px; }
+.ceiling b { font-variant-numeric: tabular-nums; }
+.compare { font-size: 14px; color: var(--muted); }
+.banner { background: var(--warn-bg); color: var(--ink); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; font-size: 14.5px; }
+.lines { display: grid; grid-template-columns: 1fr auto; gap: 6px 14px; margin: 0; font-variant-numeric: tabular-nums; font-size: 15px; }
+.lines dt { color: var(--muted); }
+.lines dd { margin: 0; text-align: right; font-weight: 550; }
+.lines .total { border-top: 1px solid var(--line); padding-top: 6px; color: var(--ink); font-weight: 700; }
+.msg { font-size: 14px; color: var(--muted); min-height: 20px; }
+.msg a { color: var(--accent); font-weight: 650; }
+
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.stat .k { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+.stat .v { font-size: 24px; font-weight: 800; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.deal { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.deal .top { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+.deal .name { font-weight: 700; overflow-wrap: anywhere; }
+.deal .meta { font-size: 13.5px; color: var(--muted); }
+.deal .nums { font-size: 14.5px; font-variant-numeric: tabular-nums; }
+.pos { color: var(--good); font-weight: 700; }
+.neg { color: var(--bad); font-weight: 700; }
+.empty { color: var(--muted); text-align: center; padding: 18px 8px; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.actions button { flex: 1 1 140px; }
+textarea.export { width: 100%; min-height: 120px; font: inherit; font-size: 14px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+
+.checklist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.checklist li { border-top: 1px solid var(--line); }
+.checklist li:first-child { border-top: 0; }
+.checklist label { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; margin: 0; font-size: 15.5px; font-weight: 400; color: var(--ink); cursor: pointer; }
+.checklist input { width: 22px; height: 22px; margin: 1px 0 0; flex: none; accent-color: var(--accent); }
+.checklist input:checked + span { color: var(--muted); text-decoration: line-through; }
+
+nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: grid; grid-template-columns: repeat(4, 1fr); background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
+.tab { background: none; border: 0; border-radius: 0; color: var(--muted); min-height: 58px; padding: 8px 4px 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 11.5px; font-weight: 650; }
+.tab[aria-selected="true"] { color: var(--accent); }
+.tab svg { width: 24px; height: 24px; }
+@media (prefers-reduced-motion: no-preference) { .chip span, button { transition: background 0.12s, color 0.12s; } }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="top">
+    <h1>Deal Desk</h1>
+    <button type="button" class="ghost small" id="installBtn" hidden>Add to Home Screen</button>
+  </header>
+  <div class="card" id="installCard" hidden>
+    <h3>Put it on your Home Screen</h3>
+    <p class="sub">In Safari, tap the Share button, then Add to Home Screen. After that it opens like any other app and works without a connection.</p>
+    <button type="button" class="ghost small" id="installClose">Got it</button>
+  </div>
+
+  <!-- ===================== FIND ===================== -->
+  <section class="view" id="view-find" aria-labelledby="h-find">
+    <h2 id="h-find">Find deals</h2>
+    <p class="sub">Pick a brand and a deal type, then tap a site. If you have the Home Depot or Lowe's app, the link may open there.</p>
+    <div>
+      <span class="label">Brand</span>
+      <div class="chips" id="brandChips"></div>
+    </div>
+    <div>
+      <span class="label">Deal type</span>
+      <div class="chips" id="modChips"></div>
+    </div>
+    <div>
+      <label for="toolType">Tool type</label>
+      <input type="text" id="toolType" autocomplete="off" autocapitalize="none" placeholder="miter saw">
+      <p class="hint">Try: drill, impact driver, combo kit, circular saw, battery.</p>
+    </div>
+    <p class="query">Searching for <b id="queryShown"></b></p>
+    <div class="launch">
+      <a id="linkHD" href="https://www.homedepot.com/s/power%20tool" target="_blank" rel="noopener"><strong>Home Depot</strong><small>Then sort by price, low to high</small></a>
+      <a id="linkLowes" href="https://www.lowes.com/search?searchTerm=power%20tool" target="_blank" rel="noopener"><strong>Lowe's</strong><small>Then filter to clearance and your store</small></a>
+      <a id="linkHiBid" href="https://hibid.com/lots?q=power%20tool" target="_blank" rel="noopener"><strong>HiBid</strong><small>Then filter by distance, sort by ending soonest</small></a>
+    </div>
+    <div class="card">
+      <h3>Quick tips</h3>
+      <ul class="tips">
+        <li>Home Depot: Shop All, then Savings, then Shop All Savings shows price-reduced items.</li>
+        <li>In a store, read the markdown date on the clearance tag. Items often drop again every few weeks.</li>
+        <li>On HiBid, filter by distance first. Bulky tools are often pickup only.</li>
+        <li>Look up recent sold or listed prices for the exact model before you bid.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ===================== CHECK ===================== -->
+  <section class="view" id="view-check" aria-labelledby="h-check">
+    <h2 id="h-check">Is it a deal?</h2>
+
+    <div class="result" aria-live="polite">
+      <div class="vrow">
+        <span class="pill" id="verdict">Enter prices</span>
+        <span class="profit" id="profitBig">$0.00</span>
+        <span class="roi" id="roiShown"></span>
+      </div>
+    </div>
+    <div class="card" aria-live="polite">
+      <p class="ceiling" id="ceiling"></p>
+      <p class="compare" id="compare"></p>
+    </div>
+
+    <div class="banner" id="sampleBanner">
+      <span>Showing a real sample: a DeWalt DW705 bought on HiBid for $50 and resold on Facebook Marketplace for $125. The premium and tax are assumptions.</span>
+      <button type="button" class="small" id="newDealTop">Start a new deal</button>
+    </div>
+
+    <div class="card">
+      <h3>Buying</h3>
+      <div class="seg" role="radiogroup" aria-label="Where you are buying">
+        <label><input type="radio" name="mode" value="store"><span>Store price</span></label>
+        <label><input type="radio" name="mode" value="auction"><span>Auction (HiBid)</span></label>
+      </div>
+      <div id="storeBox">
+        <label for="price">Price you pay (before tax)</label>
+        <div class="unit" data-pre="$"><input type="text" id="price" inputmode="decimal" autocomplete="off"></div>
+      </div>
+      <div id="auctionBox" class="grid2">
+        <div>
+          <label for="hammer">Winning bid</label>
+          <div class="unit" data-pre="$"><input type="text" id="hammer" inputmode="decimal" autocomplete="off"></div>
+        </div>
+        <div>
+          <label for="premium">Buyer's premium</label>
+          <div class="unit pct"><input type="text" id="premium" inputmode="decimal" autocomplete="off"></div>
+        </div>
+        <p class="hint" style="grid-column: 1 / -1; margin-top: 0;">Each auctioneer sets its own premium, often 15 to 18% on HiBid. Read it in the auction details.</p>
+      </div>
+      <div class="grid2">
+        <div>
+          <label for="tax">Sales tax</label>
+          <div class="unit pct"><input type="text" id="tax" inputmode="decimal" autocomplete="off"></div>
+        </div>
+        <div>
+          <label for="inbound" id="inboundLabel">Delivery or pickup</label>
+          <div class="unit" data-pre="$"><input type="text" id="inbound" inputmode="decimal" autocomplete="off"></div>
+        </div>
+        <div>
+          <label for="other">Other costs</label>
+          <div class="unit" data-pre="$"><input type="text" id="other" inputmode="decimal" autocomplete="off"></div>
+        </div>
+      </div>
+      <p class="hint">Tax: use 0 with a resale certificate. Auctions usually tax the bid plus premium.</p>
+    </div>
+
+    <div class="card">
+      <h3>Selling</h3>
+      <div>
+        <label for="resale">Expected resale price</label>
+        <div class="unit" data-pre="$"><input type="text" id="resale" inputmode="decimal" autocomplete="off"></div>
+        <p class="hint">Use what the same model has actually sold for, not asking prices.</p>
+      </div>
+      <div class="grid2">
+        <div>
+          <label for="channel">Where you sell</label>
+          <select id="channel">
+            <option value="fb">Facebook</option>
+            <option value="ebay">eBay</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div>
+          <label for="feePct">Selling fee</label>
+          <div class="unit pct"><input type="text" id="feePct" inputmode="decimal" autocomplete="off"></div>
+        </div>
+        <div>
+          <label for="shipOut">Shipping you pay</label>
+          <div class="unit" data-pre="$"><input type="text" id="shipOut" inputmode="decimal" autocomplete="off"></div>
+        </div>
+      </div>
+      <div>
+        <label for="newPrice">New retail price (to compare)</label>
+        <div class="unit" data-pre="$"><input type="text" id="newPrice" inputmode="decimal" autocomplete="off"></div>
+        <p class="hint">The Home Depot or Lowe's price for the same kind of tool, new.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>My targets</h3>
+      <div class="grid2">
+        <div>
+          <label for="minProfit">Minimum profit</label>
+          <div class="unit" data-pre="$"><input type="text" id="minProfit" inputmode="decimal" autocomplete="off"></div>
+        </div>
+        <div>
+          <label for="targetRoi">Minimum return</label>
+          <div class="unit pct"><input type="text" id="targetRoi" inputmode="decimal" autocomplete="off"></div>
+        </div>
+      </div>
+      <p class="hint">Starting points. A 50% return means $50 profit on $100 spent.</p>
+    </div>
+
+    <div class="card">
+      <h3>Breakdown</h3>
+      <dl class="lines" id="lines"></dl>
+    </div>
+
+    <div class="card">
+      <h3>Save this deal</h3>
+      <div>
+        <label for="itemName">Item or model number</label>
+        <input type="text" id="itemName" autocomplete="off" placeholder="DeWalt DW705 miter saw">
+      </div>
+      <div>
+        <label for="itemSource">Source</label>
+        <select id="itemSource">
+          <option>Home Depot</option>
+          <option>Lowe's</option>
+          <option>HiBid</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <button type="button" id="saveBtn">Save to log</button>
+      <p class="msg" id="saveMsg"></p>
+      <button type="button" class="ghost" id="newDealBtn">Start a new deal</button>
+    </div>
+  </section>
+
+  <!-- ===================== LOG ===================== -->
+  <section class="view" id="view-log" aria-labelledby="h-log">
+    <h2 id="h-log">Deal log</h2>
+    <div class="stats">
+      <div class="stat"><div class="k">Profit on sold items</div><div class="v" id="statProfit">$0.00</div></div>
+      <div class="stat"><div class="k">Cash tied up</div><div class="v" id="statTied">$0.00</div></div>
+      <div class="stat"><div class="k">Items sold</div><div class="v" id="statSold">0</div></div>
+      <div class="stat"><div class="k">Typical sold price vs new</div><div class="v" id="statPct">-</div></div>
+    </div>
+    <div id="dealList" style="display:flex; flex-direction:column; gap:12px;"></div>
+    <p class="empty" id="logEmpty">No deals saved yet. Check a deal, then tap Save to log.</p>
+    <div class="card">
+      <h3>Backup</h3>
+      <p class="sub">The log is saved on this phone only. Back it up now and then, and before you delete the app or clear Safari data.</p>
+      <div class="actions">
+        <button type="button" id="backupBtn">Back up</button>
+        <button type="button" class="ghost" id="restoreBtn">Restore</button>
+        <button type="button" class="ghost" id="copyBtn">Copy as text</button>
+      </div>
+      <input type="file" id="restoreInput" accept=".json,application/json" hidden aria-label="Choose a backup file">
+      <p class="msg" id="backupMsg"></p>
+      <textarea class="export" id="exportBox" hidden readonly aria-label="Log as text"></textarea>
+    </div>
+  </section>
+
+  <!-- ===================== ROUTINE ===================== -->
+  <section class="view" id="view-routine" aria-labelledby="h-routine">
+    <h2 id="h-routine">Routine</h2>
+    <p class="sub">Checks clear at midnight.</p>
+    <div class="card"><h3>Daily 10-minute pass</h3><ul class="checklist" data-list="daily"></ul></div>
+    <div class="card"><h3>Before buying in a store or online</h3><ul class="checklist" data-list="retail"></ul></div>
+    <div class="card"><h3>Before bidding on HiBid</h3><ul class="checklist" data-list="bid"></ul></div>
+  </section>
+
+</div>
+
+<nav class="tabs" role="tablist" aria-label="Sections">
+  <button type="button" class="tab" role="tab" data-tab="find" aria-selected="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/></svg>Find</button>
+  <button type="button" class="tab" role="tab" data-tab="check" aria-selected="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8.5 7.5h7M8.5 12h.01M12 12h.01M15.5 12h.01M8.5 16h.01M12 16h.01M15.5 16h.01"/></svg>Check</button>
+  <button type="button" class="tab" role="tab" data-tab="log" aria-selected="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></svg>Log</button>
+  <button type="button" class="tab" role="tab" data-tab="routine" aria-selected="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12.5l3 3 5-6"/></svg>Routine</button>
+</nav>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ---------- storage that tolerates being blocked ---------- */
+  var store = {
+    get: function (k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { window.localStorage.setItem(k, v); } catch (e) {} }
+  };
+
+  /* ---------- small helpers ---------- */
+  function num(v) {
+    var n = parseFloat(String(v == null ? '' : v).replace(/[$,%\s]/g, ''));
+    return isFinite(n) && n >= 0 ? n : 0;
+  }
+  function money(n) {
+    var neg = n < 0;
+    var s = Math.abs(n).toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return (neg ? '-' : '') + s;
+  }
+  function pct(n) { return Math.round(n * 100) + '%'; }
+  function el(tag, props, kids) {
+    var e = document.createElement(tag);
+    if (props) Object.keys(props).forEach(function (k) {
+      if (k === 'text') e.textContent = props[k];
+      else if (k === 'class') e.className = props[k];
+      else e.setAttribute(k, props[k]);
+    });
+    (kids || []).forEach(function (c) { if (c) e.appendChild(c); });
+    return e;
+  }
+  function isoDay(d) { return (d || new Date()).toISOString().slice(0, 10); }
+
+  /* ---------- profit math (pure) ---------- */
+  function calc(i) {
+    var net = i.resale * (1 - i.feePct / 100) - i.shipOut;
+    var base = i.mode === 'auction' ? i.hammer : i.price;
+    var premiumAmt = i.mode === 'auction' ? i.hammer * i.premium / 100 : 0;
+    var taxable = base + premiumAmt;
+    var taxAmt = taxable * i.tax / 100;
+    var cost = taxable + taxAmt + i.inbound + i.other;
+    var profit = net - cost;
+    var roi = cost > 0 ? profit / cost : 0;
+    var maxCost = Math.min(net / (1 + i.targetRoi / 100), net - i.minProfit);
+    var mult = (i.mode === 'auction' ? (1 + i.premium / 100) : 1) * (1 + i.tax / 100);
+    var maxBase = Math.max(0, (maxCost - i.inbound - i.other) / mult);
+    var verdict;
+    if (profit <= 0) verdict = 'pass';
+    else if (profit >= i.minProfit - 0.005 && roi * 100 >= i.targetRoi - 0.005) verdict = 'buy';
+    else verdict = 'marginal';
+    return {
+      net: net, base: base, premiumAmt: premiumAmt, taxAmt: taxAmt, cost: cost, profit: profit, roi: roi,
+      maxBase: maxBase, verdict: verdict,
+      resalePctNew: i.newPrice > 0 ? i.resale / i.newPrice : null,
+      costPctNew: i.newPrice > 0 ? cost / i.newPrice : null
+    };
+  }
+
+  /* ---------- state ---------- */
+  var SAMPLE = {
+    mode: 'auction', resale: '125', channel: 'fb', feePct: '0', shipOut: '0', price: '', hammer: '50', premium: '16',
+    tax: '7', inbound: '0', other: '0', newPrice: '299.99', minProfit: '25', targetRoi: '50',
+    name: 'DeWalt DW705 miter saw', source: 'HiBid'
+  };
+  var state = { calc: {}, sample: true, find: { brand: 'DeWalt', mod: 'None', type: 'miter saw' }, tab: 'check', installDismissed: false };
+  Object.keys(SAMPLE).forEach(function (k) { state.calc[k] = SAMPLE[k]; });
+  try {
+    var saved = JSON.parse(store.get('dd2-state') || 'null');
+    if (saved && typeof saved === 'object') {
+      if (saved.calc) Object.keys(SAMPLE).forEach(function (k) { if (typeof saved.calc[k] === 'string') state.calc[k] = saved.calc[k]; });
+      if (typeof saved.sample === 'boolean') state.sample = saved.sample;
+      if (saved.find) { ['brand', 'mod', 'type'].forEach(function (k) { if (typeof saved.find[k] === 'string') state.find[k] = saved.find[k]; }); }
+      if (typeof saved.tab === 'string') state.tab = saved.tab;
+      state.installDismissed = !!saved.installDismissed;
+    }
+  } catch (e) {}
+  function saveState() { store.set('dd2-state', JSON.stringify(state)); }
+
+  var STATUSES = ['Watching', 'Bought', 'Listed', 'Sold'];
+  var log = [];
+  try { var rawLog = JSON.parse(store.get('dd2-log') || '[]'); if (Array.isArray(rawLog)) log = rawLog.map(cleanDeal).filter(Boolean); } catch (e) { log = []; }
+  function saveLog() { store.set('dd2-log', JSON.stringify(log)); }
+
+  function cleanDeal(d) {
+    if (!d || typeof d.name !== 'string') return null;
+    var exp = isFinite(d.expProfit) ? Number(d.expProfit) : (isFinite(d.profit) ? Number(d.profit) : 0);
+    return {
+      id: typeof d.id === 'string' ? d.id : String(Date.now()) + Math.random().toString(36).slice(2, 7),
+      name: d.name.slice(0, 200),
+      source: typeof d.source === 'string' ? d.source.slice(0, 40) : 'Other',
+      status: STATUSES.indexOf(d.status) >= 0 ? d.status : 'Watching',
+      cost: isFinite(d.cost) ? Number(d.cost) : 0,
+      expProfit: exp,
+      soldNet: d.soldNet != null && d.soldNet !== '' && isFinite(d.soldNet) ? Number(d.soldNet) : null,
+      newPrice: d.newPrice != null && d.newPrice !== '' && isFinite(d.newPrice) && Number(d.newPrice) > 0 ? Number(d.newPrice) : null,
+      created: typeof d.created === 'string' ? d.created.slice(0, 10) : isoDay()
+    };
+  }
+
+  /* ---------- tabs ---------- */
+  var TABS = ['find', 'check', 'log', 'routine'];
+  function showTab(name) {
+    if (TABS.indexOf(name) < 0) name = 'check';
+    TABS.forEach(function (t) { $('view-' + t).classList.toggle('active', t === name); });
+    Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (b) {
+      b.setAttribute('aria-selected', b.getAttribute('data-tab') === name ? 'true' : 'false');
+    });
+    state.tab = name; saveState();
+    window.scrollTo(0, 0);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (b) {
+    b.addEventListener('click', function () { showTab(b.getAttribute('data-tab')); });
+  });
+
+  /* ---------- Find ---------- */
+  var BRANDS = ['Any', 'Milwaukee', 'DeWalt', 'Ryobi', 'Ridgid', 'Makita', 'Craftsman', 'Kobalt', 'Bosch'];
+  var MODS = ['Clearance', 'Open box', 'Combo kit', 'Bare tool', 'None'];
+  function chipGroup(boxId, name, items, current, onPick) {
+    var box = $(boxId);
+    items.forEach(function (label) {
+      var inp = el('input', { type: 'radio', name: name, value: label });
+      if (label === current) inp.checked = true;
+      inp.addEventListener('change', function () { onPick(label); updateSearch(); });
+      box.appendChild(el('label', { class: 'chip' }, [inp, el('span', { text: label })]));
+    });
+  }
+  chipGroup('brandChips', 'brand', BRANDS, state.find.brand, function (v) { state.find.brand = v; });
+  chipGroup('modChips', 'mod', MODS, state.find.mod, function (v) { state.find.mod = v; });
+  $('toolType').value = state.find.type;
+  function updateSearch() {
+    var parts = [];
+    if (state.find.brand !== 'Any') parts.push(state.find.brand);
+    if (state.find.mod !== 'None') parts.push(state.find.mod.toLowerCase());
+    var t = $('toolType').value.trim();
+    state.find.type = t;
+    if (t) parts.push(t);
+    var q = parts.join(' ') || 'power tool';
+    var e = encodeURIComponent(q);
+    $('queryShown').textContent = q;
+    $('linkHD').href = 'https://www.homedepot.com/s/' + e;
+    $('linkLowes').href = 'https://www.lowes.com/search?searchTerm=' + e;
+    $('linkHiBid').href = 'https://hibid.com/lots?q=' + e;
+    saveState();
+  }
+  $('toolType').addEventListener('input', updateSearch);
+
+  /* ---------- Check ---------- */
+  var FIELDS = ['resale', 'feePct', 'shipOut', 'price', 'hammer', 'premium', 'tax', 'inbound', 'other', 'newPrice', 'minProfit', 'targetRoi'];
+  var FEE = { fb: '0', ebay: '13' };
+  var lastCalc = null;
+
+  function readInputs() {
+    var c = state.calc;
+    var i = { mode: c.mode };
+    FIELDS.forEach(function (k) { i[k] = num(c[k]); });
+    return i;
+  }
+  function line(dl, k, v, cls) {
+    var dt = el('dt', { text: k });
+    var dd = el('dd', { text: v });
+    if (cls) { dt.className = cls; dd.className = cls; }
+    dl.appendChild(dt); dl.appendChild(dd);
+  }
+  function renderCheck() {
+    var c = state.calc, i = readInputs(), isAuction = i.mode === 'auction';
+    $('storeBox').hidden = isAuction;
+    $('auctionBox').hidden = !isAuction;
+    $('inboundLabel').textContent = isAuction ? 'Pickup or shipping' : 'Delivery to you';
+    $('sampleBanner').hidden = !state.sample;
+    var r = calc(i);
+    lastCalc = { i: i, r: r };
+    var ready = i.resale > 0 && r.base > 0;
+
+    var pill = $('verdict'), big = $('profitBig');
+    if (!ready) {
+      pill.className = 'pill'; pill.textContent = 'Enter prices';
+      big.textContent = '-'; big.className = 'profit';
+      $('roiShown').textContent = '';
+      $('ceiling').textContent = 'Enter the resale price and what you would pay to see your highest bid.';
+    } else {
+      pill.className = 'pill ' + r.verdict;
+      pill.textContent = r.verdict === 'buy' ? (isAuction ? 'BID' : 'BUY') : r.verdict.toUpperCase();
+      big.textContent = money(r.profit);
+      big.className = 'profit' + (r.profit < 0 ? ' neg' : '');
+      $('roiShown').textContent = r.cost > 0 ? Math.round(r.roi * 100) + '% return' : '';
+      var c2 = $('ceiling'); c2.textContent = '';
+      c2.appendChild(document.createTextNode(isAuction ? 'Highest bid that meets your targets: ' : 'Highest price that meets your targets: '));
+      c2.appendChild(el('b', { text: money(r.maxBase) }));
+      c2.appendChild(document.createTextNode(r.maxBase <= 0 ? '. Your targets cannot be met at this resale price.' : (isAuction ? '. Set that as your max bid and stop there.' : '.')));
+    }
+    var cmp = $('compare');
+    if (ready && r.resalePctNew != null) cmp.textContent = 'Resale is ' + pct(r.resalePctNew) + ' of new. Your total cost is ' + pct(r.costPctNew) + ' of new.';
+    else cmp.textContent = 'Add the new retail price to compare.';
+
+    var dl = $('lines'); dl.textContent = '';
+    line(dl, 'Resale price', money(i.resale));
+    line(dl, 'Selling fee (' + c.feePct + '%)', '-' + money(i.resale * i.feePct / 100));
+    line(dl, 'Shipping to buyer', '-' + money(i.shipOut));
+    line(dl, 'Net you keep', money(r.net), 'total');
+    line(dl, isAuction ? 'Winning bid' : 'Store price', money(r.base));
+    if (isAuction) line(dl, 'Buyer\'s premium (' + c.premium + '%)', money(r.premiumAmt));
+    line(dl, 'Sales tax (' + c.tax + '%)', money(r.taxAmt));
+    line(dl, 'Delivery and other costs', money(i.inbound + i.other));
+    line(dl, 'Total cost to you', money(r.cost), 'total');
+  }
+
+  function bindCheck() {
+    FIELDS.forEach(function (k) {
+      $(k).value = state.calc[k];
+      $(k).addEventListener('input', function () {
+        state.calc[k] = $(k).value; state.sample = false;
+        if (k === 'feePct') {
+          var v = num($(k).value) + '';
+          state.calc.channel = ($(k).value.trim() === FEE.fb || $(k).value.trim() === FEE.ebay) ? (($(k).value.trim() === FEE.fb) ? 'fb' : 'ebay') : 'other';
+          $('channel').value = state.calc.channel;
+        }
+        saveState(); renderCheck();
+      });
+    });
+    $('channel').value = state.calc.channel;
+    $('channel').addEventListener('change', function () {
+      state.calc.channel = $('channel').value;
+      if (FEE[state.calc.channel] != null) { state.calc.feePct = FEE[state.calc.channel]; $('feePct').value = state.calc.feePct; }
+      state.sample = false; saveState(); renderCheck();
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('input[name="mode"]'), function (r) {
+      r.checked = r.value === state.calc.mode;
+      r.addEventListener('change', function () {
+        state.calc.mode = r.value; state.sample = false;
+        state.calc.source = r.value === 'auction' ? 'HiBid' : (state.calc.source === 'HiBid' ? 'Home Depot' : state.calc.source);
+        $('itemSource').value = state.calc.source;
+        saveState(); renderCheck();
+      });
+    });
+    $('itemName').value = state.calc.name;
+    $('itemName').addEventListener('input', function () { state.calc.name = $('itemName').value; saveState(); });
+    $('itemSource').value = state.calc.source;
+    $('itemSource').addEventListener('change', function () { state.calc.source = $('itemSource').value; saveState(); });
+  }
+
+  function newDeal() {
+    ['resale', 'shipOut', 'price', 'hammer', 'inbound', 'other', 'newPrice', 'name'].forEach(function (k) { state.calc[k] = ''; });
+    state.sample = false;
+    FIELDS.forEach(function (k) { $(k).value = state.calc[k]; });
+    $('itemName').value = '';
+    $('saveMsg').textContent = '';
+    saveState(); renderCheck();
+    window.scrollTo(0, 0);
+  }
+  $('newDealBtn').addEventListener('click', newDeal);
+  $('newDealTop').addEventListener('click', newDeal);
+
+  $('saveBtn').addEventListener('click', function () {
+    if (!lastCalc) return;
+    var i = lastCalc.i, r = lastCalc.r;
+    var msg = $('saveMsg');
+    if (!(i.resale > 0 && r.base > 0)) { msg.textContent = 'Enter the resale price and what you would pay first.'; return; }
+    var name = $('itemName').value.trim() || 'Untitled item';
+    log.unshift(cleanDeal({ name: name, source: $('itemSource').value, status: 'Watching', cost: r.cost, expProfit: r.profit, soldNet: null, newPrice: i.newPrice > 0 ? i.newPrice : null, created: isoDay() }));
+    saveLog(); renderLog();
+    msg.textContent = '';
+    msg.appendChild(document.createTextNode('Saved. '));
+    var a = el('a', { href: '#log', text: 'View the log' });
+    a.addEventListener('click', function (ev) { ev.preventDefault(); showTab('log'); });
+    msg.appendChild(a);
+  });
+
+  /* ---------- Log ---------- */
+  function dealLine(d) {
+    var parts = [];
+    if (d.status === 'Sold' && d.soldNet != null) {
+      var actual = d.soldNet - d.cost;
+      parts.push({ t: 'Actual profit ', cls: '' }, { t: money(actual), cls: actual >= 0 ? 'pos' : 'neg' });
+      if (d.newPrice) parts.push({ t: '  ·  sold at ' + pct(d.soldNet / d.newPrice) + ' of new', cls: '' });
+    } else {
+      parts.push({ t: 'Expected profit ', cls: '' }, { t: money(d.expProfit), cls: d.expProfit >= 0 ? 'pos' : 'neg' });
+    }
+    return parts;
+  }
+  function paintLine(node, d) {
+    node.textContent = '';
+    dealLine(d).forEach(function (p) { node.appendChild(el('span', { class: p.cls, text: p.t })); });
+  }
+  function updateStats() {
+    var profit = 0, tied = 0, sold = 0, ratios = [];
+    log.forEach(function (d) {
+      if (d.status === 'Sold') {
+        sold++;
+        if (d.soldNet != null) { profit += d.soldNet - d.cost; if (d.newPrice) ratios.push(d.soldNet / d.newPrice); }
+      }
+      if (d.status === 'Bought' || d.status === 'Listed') tied += d.cost;
+    });
+    $('statProfit').textContent = money(profit);
+    $('statTied').textContent = money(tied);
+    $('statSold').textContent = String(sold);
+    $('statPct').textContent = ratios.length ? pct(ratios.reduce(function (a, b) { return a + b; }, 0) / ratios.length) : '-';
+  }
+  function moneyField(labelText, id, value, onChange) {
+    var inp = el('input', { type: 'text', id: id, inputmode: 'decimal', autocomplete: 'off' });
+    inp.value = value == null ? '' : String(value);
+    inp.addEventListener('input', function () { onChange(inp.value.trim() === '' ? null : num(inp.value)); });
+    return el('div', null, [el('label', { for: id, text: labelText }), el('div', { class: 'unit', 'data-pre': '$' }, [inp])]);
+  }
+  function renderLog() {
+    var list = $('dealList'); list.textContent = '';
+    $('logEmpty').hidden = log.length > 0;
+    log.forEach(function (d) {
+      var statusSel = el('select', { 'aria-label': 'Status for ' + d.name });
+      STATUSES.forEach(function (s) { var o = el('option', { text: s }); if (s === d.status) o.selected = true; statusSel.appendChild(o); });
+      statusSel.addEventListener('change', function () { d.status = statusSel.value; saveLog(); renderLog(); });
+
+      var lineEl = el('p', { class: 'nums' });
+      paintLine(lineEl, d);
+      var rm = el('button', { type: 'button', class: 'danger small', text: 'Remove' });
+      var armed = false;
+      rm.addEventListener('click', function () {
+        if (!armed) { armed = true; rm.textContent = 'Tap again to remove'; setTimeout(function () { armed = false; rm.textContent = 'Remove'; }, 3000); return; }
+        log = log.filter(function (x) { return x !== d; }); saveLog(); renderLog();
+      });
+
+      var kids = [
+        el('div', { class: 'top' }, [
+          el('div', null, [el('div', { class: 'name', text: d.name }), el('div', { class: 'meta', text: d.source + '  ·  ' + d.created })])
+        ]),
+        el('div', null, [el('label', { text: 'Status' }), statusSel]),
+        el('p', { class: 'nums', text: 'Total cost ' + money(d.cost) }),
+        lineEl
+      ];
+      if (d.status === 'Sold') {
+        kids.push(moneyField('Sold for (what you kept after fees and shipping)', 'sold-' + d.id, d.soldNet, function (v) { d.soldNet = v; saveLog(); paintLine(lineEl, d); updateStats(); }));
+      }
+      kids.push(moneyField('New retail price (optional)', 'new-' + d.id, d.newPrice, function (v) { d.newPrice = v > 0 ? v : null; saveLog(); paintLine(lineEl, d); updateStats(); }));
+      kids.push(rm);
+      list.appendChild(el('div', { class: 'deal' }, kids));
+    });
+    updateStats();
+  }
+
+  /* backup, restore, copy */
+  function backupText() {
+    return JSON.stringify({ app: 'deal-desk', version: 2, exported: new Date().toISOString(), log: log }, null, 2);
+  }
+  function summaryText() {
+    if (!log.length) return 'No deals saved yet.';
+    return log.map(function (d) {
+      var tail = d.status === 'Sold' && d.soldNet != null ? 'sold net ' + money(d.soldNet) + ', actual profit ' + money(d.soldNet - d.cost) : 'expected profit ' + money(d.expProfit);
+      return d.name + ' | ' + d.source + ' | ' + d.status + ' | cost ' + money(d.cost) + ' | ' + tail;
+    }).join('\n');
+  }
+  $('backupBtn').addEventListener('click', function () {
+    var msg = $('backupMsg');
+    var text = backupText();
+    var fname = 'deal-desk-backup-' + isoDay() + '.json';
+    var done = function (m) { msg.textContent = m; };
+    var fallback = function () {
+      try {
+        var blob = new Blob([text], { type: 'application/json' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob); a.download = fname;
+        document.body.appendChild(a); a.click(); a.remove();
+        done('Backup saved to your downloads.');
+      } catch (e) {
+        var box = $('exportBox'); box.value = text; box.hidden = false;
+        done('Could not save a file. Select the text below and copy it somewhere safe.');
+      }
+    };
+    try {
+      var file = new File([text], fname, { type: 'application/json' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: 'Deal Desk backup' }).then(function () { done('Backup shared.'); }, function (err) {
+          if (err && err.name === 'AbortError') return;
+          fallback();
+        });
+        return;
+      }
+    } catch (e) {}
+    fallback();
+  });
+  $('restoreBtn').addEventListener('click', function () { $('restoreInput').click(); });
+  $('restoreInput').addEventListener('change', function () {
+    var input = this, f = input.files && input.files[0];
+    if (!f) return;
+    var rd = new FileReader();
+    rd.onload = function () {
+      try {
+        var data = JSON.parse(rd.result);
+        var arr = Array.isArray(data) ? data : (data && Array.isArray(data.log) ? data.log : null);
+        if (!arr) throw new Error('not a log');
+        var clean = arr.map(cleanDeal).filter(Boolean);
+        log = clean; saveLog(); renderLog();
+        $('backupMsg').textContent = 'Restored ' + clean.length + ' deal' + (clean.length === 1 ? '' : 's') + '. The log on screen now matches the backup.';
+      } catch (e) {
+        $('backupMsg').textContent = 'That file is not a Deal Desk backup.';
+      }
+      input.value = '';
+    };
+    rd.onerror = function () { $('backupMsg').textContent = 'Could not read that file.'; };
+    rd.readAsText(f);
+  });
+  $('copyBtn').addEventListener('click', function () {
+    var text = summaryText(), box = $('exportBox'), msg = $('backupMsg');
+    box.value = text;
+    var fail = function () { msg.textContent = 'Copy was blocked. Select the text below and copy it.'; box.hidden = false; box.focus(); box.select(); };
+    try { navigator.clipboard.writeText(text).then(function () { msg.textContent = 'Copied.'; box.hidden = true; }, fail); } catch (e) { fail(); }
+  });
+
+  /* ---------- Routine, cleared each day ---------- */
+  var LISTS = {
+    daily: [
+      'Open Home Depot, Lowe\'s and HiBid already signed in, in the apps or one browser. Prices are generally visible signed out; sign-in is for saved lists, store settings and checkout.',
+      'Confirm My Store is set to the nearest store on both retail sites.',
+      'Home Depot: Shop All, then Savings, then Shop All Savings. Sort by price, low to high.',
+      'Lowe\'s: search each brand with "clearance" and filter to your store.',
+      'HiBid: run the same brand searches, filter by distance, and sort by ending soonest.',
+      'Look up recent sold prices for each model that looks good before spending anything.'
+    ],
+    retail: [
+      'The same model has sold recently at a price that clears your targets on the Check tab.',
+      'Return window and any purchase limits are checked before buying more than one.',
+      'In a store, read the markdown date on the clearance tag.',
+      'If a purchase comes with a free tool or battery, plan to sell the freebie separately.',
+      'Battery and charger are included, or the tool sells well as a bare tool.'
+    ],
+    bid: [
+      'Buyer\'s premium and sales tax are read from the auction\'s own terms and entered on the Check tab.',
+      'Auction Details, then Shipping / Pickup, is checked. Pickup-only lots need a drive; shipping can be quoted high.',
+      'You are registered for this auction. Each auctioneer needs its own registration.',
+      'Condition is understood: tools are usually sold as-is. Missing batteries or chargers cut resale value.',
+      'Your max bid is the number from the Check tab. The end time extends while bids keep coming, so decide the ceiling first and stick to it.'
+    ]
+  };
+  var checkKey = 'dd2-checks-' + isoDay();
+  var checks = {};
+  try { checks = JSON.parse(store.get(checkKey) || '{}') || {}; } catch (e) { checks = {}; }
+  Array.prototype.forEach.call(document.querySelectorAll('ul.checklist'), function (ul) {
+    var key = ul.getAttribute('data-list');
+    LISTS[key].forEach(function (text, n) {
+      var id = key + '-' + n;
+      var cb = el('input', { type: 'checkbox', id: 'chk-' + id });
+      cb.checked = !!checks[id];
+      cb.addEventListener('change', function () { checks[id] = cb.checked; store.set(checkKey, JSON.stringify(checks)); });
+      ul.appendChild(el('li', null, [el('label', null, [cb, el('span', { text: text })])]));
+    });
+  });
+
+  /* ---------- install hint (iPhone Safari only) ---------- */
+  var standalone = (window.navigator.standalone === true) || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  var onIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  if (onIOS && !standalone && !state.installDismissed) $('installBtn').hidden = false;
+  $('installBtn').addEventListener('click', function () { $('installCard').hidden = false; });
+  $('installClose').addEventListener('click', function () {
+    $('installCard').hidden = true; $('installBtn').hidden = true; state.installDismissed = true; saveState();
+  });
+
+  /* ---------- go ---------- */
+  bindCheck();
+  updateSearch();
+  renderCheck();
+  renderLog();
+  showTab(state.tab);
+  window.DealDesk = { calc: calc };
+
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+    window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+  }
+})();
+</script>
+</body>
+</html>

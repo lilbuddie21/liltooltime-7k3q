@@ -1,0 +1,36 @@
+DEAL DESK - installable phone app (web app, no App Store)
+
+WHAT IT IS
+A small offline web app for finding, pricing and tracking power tool resale deals.
+Four tabs: Find (search Home Depot, Lowe's and HiBid), Check (profit calculator),
+Log (deals and totals), Routine (daily checklists).
+
+It has no accounts, no tracking and no outside services. The deal log is stored only
+on the phone it runs on. It does not send anything anywhere.
+
+TO USE IT ON AN iPHONE
+1. Put this whole folder on any static web host (see below) so it has an https:// address.
+2. On the iPhone, open that address in Safari.
+3. Tap the Share button, then Add to Home Screen.
+4. Open it from the Home Screen icon. After the first load it works without a connection.
+
+HOSTING OPTIONS (free static hosts; steps differ by service)
+- Netlify, Cloudflare Pages or GitHub Pages all serve a folder of files like this one.
+- Upload the files in this folder as they are. index.html must sit at the top level.
+- The address will be reachable by anyone who has it. The page has no personal data in it,
+  and it asks search engines not to list it, but pick a hard-to-guess name for the site.
+- The app must be opened over https:// (not as a file) for Add to Home Screen and offline use.
+
+BACKUPS
+The log lives in the phone's storage for this app. Use Log, then Back up now and then,
+and before deleting the app or clearing Safari data. Restore reads the same file back in.
+
+UPDATING
+If you change any file later, change CACHE = 'deal-desk-v1' in sw.js to a new value
+(for example 'deal-desk-v2') so phones pick up the new version.
+
+FILES
+index.html            the app
+manifest.webmanifest  name, colors and icons for the Home Screen
+sw.js                 offline cache
+icon-192.png, icon-512.png, apple-touch-icon.png   icons
