@@ -26,8 +26,12 @@ The log lives in the phone's storage for this app. Use Log, then Back up now and
 and before deleting the app or clearing Safari data. Restore reads the same file back in.
 
 UPDATING
-If you change any file later, change CACHE = 'deal-desk-v6' in sw.js to a new value
-(for example 'deal-desk-v7') so phones pick up the new version.
+The app checks for a new version whenever it is brought back to the front (and hourly while
+open) and switches to it by itself. The page itself is never served from an old copy while
+online; the saved copy is only used offline or on a very slow connection.
+If you change an icon or the manifest, change CACHE = 'deal-desk-v7' in sw.js to a new value
+(for example 'deal-desk-v8') so those files are saved again. Changes to index.html alone
+need nothing extra.
 
 FILES
 index.html            the app

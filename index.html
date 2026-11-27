@@ -186,6 +186,7 @@ details.more > summary { cursor: pointer; font-weight: 700; min-height: 30px; di
 details.more > summary::after { content: ""; margin-left: auto; flex: none; width: 8px; height: 8px; border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(45deg) translateY(-2px); }
 details.more[open] > summary::after { transform: rotate(-135deg) translateY(-2px); }
 #invNote:empty { display: none; }
+.updatebar { position: fixed; left: 12px; right: 12px; bottom: calc(66px + env(safe-area-inset-bottom)); z-index: 12; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 8px 8px 14px; background: var(--surface); border: 1px solid var(--accent); border-radius: 12px; box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.4); font-weight: 650; }
 .linkrow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .linkrow a { display: flex; align-items: center; justify-content: center; text-align: center; min-height: 46px; padding: 6px 8px; border: 1px solid var(--accent); border-radius: 10px; color: var(--accent); font-weight: 650; font-size: 14.5px; text-decoration: none; background: var(--surface); }
 .col { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
@@ -659,6 +660,11 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
     </div>
   </section>
 
+</div>
+
+<div class="updatebar" id="updateBar" role="status" hidden>
+  <span>A new version is ready.</span>
+  <button type="button" class="small" id="updateBtn">Reload</button>
 </div>
 
 <nav class="tabs" role="tablist" aria-label="Sections">
@@ -2088,8 +2094,23 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
   showTab(state.tab);
   window.DealDesk = { calc: calc, sellCalc: sellCalc, plRows: plRows, plSummary: plSummary };
 
+  /* ---------- updates: check for a new version now and then, and switch to it when it arrives ---------- */
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
-    window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+    var swReg = null, hadController = !!navigator.serviceWorker.controller, switched = false;
+    var checkForUpdate = function () { if (swReg && !document.hidden) swReg.update().catch(function () {}); };
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (!hadController || switched) return;   // the very first install is not an update
+      switched = true;
+      /* An unsaved new-item form lives only on screen, so let her finish it first; everything else is already saved. */
+      if (invDraft) $('updateBar').hidden = false; else location.reload();
+    });
+    $('updateBtn').addEventListener('click', function () { location.reload(); });
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').then(function (reg) { swReg = reg; }).catch(function () {});
+    });
+    document.addEventListener('visibilitychange', checkForUpdate);
+    window.addEventListener('focus', checkForUpdate);
+    setInterval(checkForUpdate, 60 * 60 * 1000);
   }
 })();
 </script>
