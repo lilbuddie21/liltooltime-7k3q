@@ -186,6 +186,7 @@ details.more > summary { cursor: pointer; font-weight: 700; min-height: 30px; di
 details.more > summary::after { content: ""; margin-left: auto; flex: none; width: 8px; height: 8px; border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(45deg) translateY(-2px); }
 details.more[open] > summary::after { transform: rotate(-135deg) translateY(-2px); }
 #invNote:empty { display: none; }
+.pending { margin: 0 0 10px; padding: 10px 12px; border-radius: 10px; background: var(--warn-bg); color: var(--warn); font-weight: 650; font-size: 14.5px; }
 .updatebar { position: fixed; left: 12px; right: 12px; bottom: calc(66px + env(safe-area-inset-bottom)); z-index: 12; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 8px 8px 14px; background: var(--surface); border: 1px solid var(--accent); border-radius: 12px; box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.4); font-weight: 650; }
 .linkrow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .linkrow a { display: flex; align-items: center; justify-content: center; text-align: center; min-height: 46px; padding: 6px 8px; border: 1px solid var(--accent); border-radius: 10px; color: var(--accent); font-weight: 650; font-size: 14.5px; text-decoration: none; background: var(--surface); }
@@ -587,13 +588,14 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
       <div class="stat"><div class="k">Cash tied up</div><div class="v" id="statTied">$0.00</div></div>
       <div class="stat"><div class="k">Items sold</div><div class="v" id="statSold">0</div></div>
       <div class="stat"><div class="k">Typical sold price vs new</div><div class="v" id="statPct">-</div></div>
-      <div class="stat" id="statOwnBox" style="grid-column: 1 / -1;" hidden><div class="k">Kept from selling your own items</div><div class="v" id="statOwn">$0.00</div></div>
+      <div class="stat" id="statOwnBox" style="grid-column: 1 / -1;" hidden><div class="k">Of this, from selling your own gear</div><div class="v" id="statOwn">$0.00</div></div>
     </div>
     <div class="card" id="plCard" aria-labelledby="h-pl">
       <div class="plhead">
         <h3 id="h-pl">Profit and loss</h3>
         <button type="button" class="ghost small" id="plToggle" aria-pressed="false">Table view</button>
       </div>
+      <p class="pending" id="plPending" role="status" hidden></p>
       <p class="sub" id="plEmpty">Mark a deal as Sold and enter what you kept, or add a past sale below. Your profits and losses show up here.</p>
       <div id="plBody" class="col" hidden>
         <div>
@@ -613,7 +615,7 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
         </div>
       </div>
       <div id="plTable" class="col" hidden></div>
-      <p class="hint" id="plHint" hidden>Only deals marked Sold with an amount kept are counted. Things you sell from your own stuff are counted separately above.</p>
+      <p class="hint" id="plHint" hidden>Only items marked Sold with an amount kept are counted. Your own gear has no purchase cost, so everything you kept from it counts as profit. Win rate and return are for deals you bought to resell.</p>
     </div>
 
     <div class="card">
@@ -786,9 +788,9 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
   var STATUSES = ['Watching', 'Bought', 'Listed', 'Sold'];
   var OWN_STATUSES = ['Planning', 'Listed', 'Sold'];
   var CONDITIONS = ['New', 'Open box', 'Used - like new', 'Used - good', 'Used - fair', 'For parts'];
-  var log = [];
-  try { var rawLog = JSON.parse(store.get('dd2-log') || '[]'); if (Array.isArray(rawLog)) log = rawLog.map(cleanDeal).filter(Boolean); } catch (e) { log = []; }
-  function saveLog() { store.set('dd2-log', JSON.stringify(log)); }
+  var log = [], lastLogJson = store.get('dd2-log');
+  try { var rawLog = JSON.parse(lastLogJson || '[]'); if (Array.isArray(rawLog)) log = rawLog.map(cleanDeal).filter(Boolean); } catch (e) { log = []; }
+  function saveLog() { lastLogJson = JSON.stringify(log); store.set('dd2-log', lastLogJson); }
 
   function str(v, n) { return typeof v === 'string' ? v.slice(0, n) : ''; }
   function cleanDeal(d) {
@@ -1187,6 +1189,7 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
   /* ---------- Log ---------- */
   function dealLine(d) {
     var parts = [], noEst = d.askPrice == null && d.expProfit === 0;
+    if (d.status === 'Sold' && d.soldNet == null) return [{ t: 'Add what you kept below so this counts on the Profit tab.', cls: '' }];
     if (d.kind === 'own') {
       if (d.status === 'Sold' && d.soldNet != null) parts.push({ t: 'Kept ', cls: '' }, { t: money(d.soldNet), cls: d.soldNet >= 0 ? 'pos' : 'neg' });
       else if (noEst) parts.push({ t: 'Add an asking price to see what you would keep.', cls: '' });
@@ -1215,7 +1218,10 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
       }
       if (d.kind === 'own') {
         hasOwn = true;
-        if (d.status === 'Sold' && d.soldNet != null) ownKept += d.soldNet;
+        if (d.status === 'Sold') {
+          sold++;
+          if (d.soldNet != null) { ownKept += d.soldNet; profit += d.soldNet; }
+        }
         return;
       }
       if (d.status === 'Sold') {
@@ -1341,6 +1347,8 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
     return photoDBp;
   }
   /* fn gets both stores and may return a function that reads its result once the transaction has finished. */
+  var chan = null;
+  try { if ('BroadcastChannel' in window) chan = new BroadcastChannel('deal-desk'); } catch (e) { chan = null; }
   function photoTx(mode, fn) {
     return photoDB().then(function (db) {
       return new Promise(function (res, rej) {
@@ -1349,6 +1357,9 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
         t.onerror = function () { rej(t.error); };
         t.onabort = function () { rej(t.error || new Error('aborted')); };
       });
+    }).then(function (v) {
+      if (mode === 'readwrite' && chan) { try { chan.postMessage('photos'); } catch (e) {} }   // tell other open windows
+      return v;
     });
   }
   function dbList(itemId) {
@@ -1760,27 +1771,30 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
   function clip(s, n) { return s.length > n ? s.slice(0, n - 1) + '…' : s; }
   function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
 
-  /* Sold deals with an amount kept, oldest first. Things sold from your own stuff have no cost, so they are not here. */
+  /* Sold items with an amount kept, oldest first. Your own gear has no purchase cost, so everything you kept counts as profit and the row is marked own. */
   function plRows() {
     var rows = [];
     log.forEach(function (d, idx) {
-      if (d.kind === 'own' || d.status !== 'Sold' || d.soldNet == null) return;
-      var profit = d.soldNet - d.cost;
-      rows.push({ id: d.id, name: d.name, date: d.soldOn || d.created, cost: d.cost, kept: d.soldNet, profit: profit, ret: d.cost > 0 ? profit / d.cost : null, idx: idx });
+      if (d.status !== 'Sold' || d.soldNet == null) return;
+      var own = d.kind === 'own', cost = own ? 0 : d.cost, profit = d.soldNet - cost;
+      rows.push({ id: d.id, name: d.name, date: d.soldOn || d.created, cost: cost, kept: d.soldNet, profit: profit, ret: cost > 0 ? profit / cost : null, idx: idx, own: own });
     });
     rows.sort(function (a, b) { return a.date < b.date ? -1 : (a.date > b.date ? 1 : b.idx - a.idx); });
     return rows;
   }
   function plSummary(rows) {
-    var s = { n: rows.length, net: 0, spent: 0, wins: 0, losses: 0, even: 0, best: null, worst: null };
+    var s = { n: rows.length, flips: 0, own: 0, ownKept: 0, net: 0, flipNet: 0, spent: 0, wins: 0, losses: 0, even: 0, best: null, worst: null };
     rows.forEach(function (r) {
-      s.net += r.profit; s.spent += r.cost;
+      s.net += r.profit;
+      if (r.own) { s.own++; s.ownKept += r.kept; return; }
+      s.flips++; s.flipNet += r.profit; s.spent += r.cost;
       if (r.profit > 0.004) s.wins++; else if (r.profit < -0.004) s.losses++; else s.even++;
       if (!s.best || r.profit > s.best.profit) s.best = r;
       if (r.profit < -0.004 && (!s.worst || r.profit < s.worst.profit)) s.worst = r;
     });
-    s.winRate = s.n ? s.wins / s.n : null;
-    s.ret = s.spent > 0 ? s.net / s.spent : null;
+    /* win rate, return, best and worst describe the deals you bought to resell; your own gear only adds to the net */
+    s.winRate = s.flips ? s.wins / s.flips : null;
+    s.ret = s.spent > 0 ? s.flipNet / s.spent : null;
     return s;
   }
 
@@ -1846,15 +1860,15 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
       var y = top + i * rowH, by = y + 19, bh = 16;
       var w = Math.abs(r.profit) * scale; if (r.profit !== 0 && w < 3) w = 3;
       var gain = r.profit >= 0, tipX = gain ? x0 + w : x0 - w;
-      var g = sv('g', { class: 'row', tabindex: '0', role: 'img', 'aria-label': r.name + ', sold ' + fmtDay(r.date, true) + ': ' + (r.profit >= 0 ? 'gain ' : 'loss ') + money(Math.abs(r.profit)) });
-      g.appendChild(sv('text', { x: L, y: y + 13, text: clip(r.name, 38) }));
+      var g = sv('g', { class: 'row', tabindex: '0', role: 'img', 'aria-label': r.name + (r.own ? ' (own gear)' : '') + ', sold ' + fmtDay(r.date, true) + ': ' + (r.profit >= 0 ? 'gain ' : 'loss ') + money(Math.abs(r.profit)) });
+      g.appendChild(sv('text', { x: L, y: y + 13, text: clip(r.name + (r.own ? ' (own gear)' : ''), 38) }));
       if (r.profit !== 0) g.appendChild(sv('path', { class: 'bar ' + (gain ? 'gain' : 'loss'), d: barPath(x0, w, by, bh, gain ? 1 : -1) }));
       g.appendChild(sv('text', { class: 'val', x: gain ? tipX + 6 : tipX - 6, y: by + 12, 'text-anchor': gain ? 'start' : 'end', text: signed(r.profit) }));
       g.appendChild(sv('rect', { class: 'hit', x: 0, y: y - 2, width: W, height: rowH }));
       var open = function () {
         hideTips(); g.classList.add('on');
         var o = origin(box, svg), sc = o.sc;
-        showTip(box, tip, signed(r.profit), [r.name, 'Sold ' + fmtDay(r.date, true), 'Cost ' + money(r.cost) + ', kept ' + money(r.kept), r.ret == null ? '' : pctSigned(r.ret) + ' return'].filter(Boolean),
+        showTip(box, tip, signed(r.profit), [r.name, 'Sold ' + fmtDay(r.date, true), r.own ? 'Your own gear, kept ' + money(r.kept) : 'Cost ' + money(r.cost) + ', kept ' + money(r.kept), r.ret == null ? '' : pctSigned(r.ret) + ' return'].filter(Boolean),
           o.x + Math.max(40, Math.min(W - 40, tipX)) * sc, o.y + (y + 4) * sc, o.y + (y + rowH - 6) * sc);
       };
       g.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse') open(); });
@@ -1947,9 +1961,9 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
     for (var i = rows.length - 1; i >= 0; i--) {
       var r = rows[i];
       body.appendChild(el('tr', null, [
-        el('td', { text: fmtDay(r.date, multiYear) }), el('td', { text: r.name }),
+        el('td', { text: fmtDay(r.date, multiYear) }), el('td', { text: r.name + (r.own ? ' (own gear)' : '') }),
         el('td', { text: signed(r.profit) }), el('td', { text: r.ret == null ? '-' : pctSigned(r.ret) }),
-        el('td', { text: money(r.cost) }), el('td', { text: money(r.kept) }), el('td', { text: signed(cum[i]) })
+        el('td', { text: r.own ? '-' : money(r.cost) }), el('td', { text: money(r.kept) }), el('td', { text: signed(cum[i]) })
       ]));
     }
     tbl.appendChild(body);
@@ -1961,6 +1975,11 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
   function renderPL() {
     var rows = plRows(), has = rows.length > 0;
     clears = [];
+    /* sold items with no amount are not counted yet, so say so instead of staying silent */
+    var pending = log.filter(function (d) { return d.status === 'Sold' && d.soldNet == null; });
+    var pend = $('plPending');
+    pend.hidden = !pending.length;
+    pend.textContent = pending.length ? (pending.length === 1 ? '1 sold item needs an amount before it counts: ' : pending.length + ' sold items need an amount before they count: ') + pending.slice(0, 3).map(function (d) { return d.name; }).join(', ') + (pending.length > 3 ? ' and ' + (pending.length - 3) + ' more' : '') + '. Open it in Inventory and fill in what you kept.' : '';
     $('plEmpty').hidden = has;
     $('plToggle').hidden = !has;
     $('plHint').hidden = !has;
@@ -1970,15 +1989,17 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
     var s = plSummary(rows);
     $('plNetLabel').textContent = s.net < 0 ? 'Net loss' : 'Net profit';
     $('plNet').textContent = signed(s.net);
-    $('plLine').textContent = plural(s.n, 'sold deal', 'sold deals') + ': ' + plural(s.wins, 'gain', 'gains') + ', ' + plural(s.losses, 'loss', 'losses') + (s.even ? ', ' + s.even + ' break-even' : '') + '.';
-    $('plWin').textContent = s.wins + ' of ' + s.n;
-    $('plWinSub').textContent = pct(s.winRate) + ' made money';
+    var flipText = s.flips ? plural(s.flips, 'sold deal', 'sold deals') + ': ' + plural(s.wins, 'gain', 'gains') + ', ' + plural(s.losses, 'loss', 'losses') + (s.even ? ', ' + s.even + ' break-even' : '') + '.' : '';
+    var ownText = s.own ? 'Your own gear: ' + money(s.ownKept) + ' from ' + plural(s.own, 'sale', 'sales') + '.' : '';
+    $('plLine').textContent = [flipText, ownText].filter(Boolean).join(' ');
+    $('plWin').textContent = s.flips ? s.wins + ' of ' + s.flips : '-';
+    $('plWinSub').textContent = s.flips ? pct(s.winRate) + ' made money' : 'No resold deals yet';
     $('plRet').textContent = s.ret == null ? '-' : pctSigned(s.ret);
-    $('plRetSub').textContent = 'on ' + money(s.spent) + ' spent';
-    $('plBest').textContent = signed(s.best.profit);
-    $('plBestSub').textContent = s.best.name;
-    $('plWorst').textContent = s.worst ? signed(s.worst.profit) : 'None';
-    $('plWorstSub').textContent = s.worst ? s.worst.name : 'No losing deals yet';
+    $('plRetSub').textContent = s.flips ? 'on ' + money(s.spent) + ' spent' : 'No resold deals yet';
+    $('plBest').textContent = s.best ? signed(s.best.profit) : '-';
+    $('plBestSub').textContent = s.best ? s.best.name : 'No resold deals yet';
+    $('plWorst').textContent = s.flips ? (s.worst ? signed(s.worst.profit) : 'None') : '-';
+    $('plWorstSub').textContent = s.flips ? (s.worst ? s.worst.name : 'No losing deals yet') : 'No resold deals yet';
     if (plTableOn) renderTable(rows);
     else { renderBars($('plBars'), rows); renderRun($('plRun'), rows); }
   }
@@ -2082,6 +2103,32 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
   $('installClose').addEventListener('click', function () {
     $('installCard').hidden = true; $('installBtn').hidden = true; state.installDismissed = true; saveState();
   });
+
+  /* ---------- keep every open window in step ----------
+     Tabs inside one window already share the same list and redraw together. This covers a second window or the app being
+     reopened: it picks up the newest saved list when another window saves, and whenever this one comes back to the front. */
+  function syncFromStorage() {
+    var raw = store.get('dd2-log');
+    if (raw === lastLogJson) return;
+    try {
+      var parsed = JSON.parse(raw || '[]');
+      if (!Array.isArray(parsed)) return;
+      log = parsed.map(cleanDeal).filter(Boolean); lastLogJson = raw;
+      renderLog();
+    } catch (e) {}
+  }
+  window.addEventListener('storage', function (e) { if (e.key === null || e.key === 'dd2-log') syncFromStorage(); });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) syncFromStorage(); });
+  window.addEventListener('focus', syncFromStorage);
+  window.addEventListener('pageshow', syncFromStorage);
+  var photoTimer = 0;
+  if (chan) chan.onmessage = function () {
+    clearTimeout(photoTimer);
+    photoTimer = setTimeout(function () {
+      Object.keys(photoMemo).forEach(function (id) { (photoMemo[id] || []).forEach(function (ph) { dropURL(ph.id); }); delete photoMemo[id]; });
+      renderList();
+    }, 150);
+  };
 
   /* ---------- go ---------- */
   bindCheck();
