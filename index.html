@@ -186,6 +186,8 @@ details.more > summary { cursor: pointer; font-weight: 700; min-height: 30px; di
 details.more > summary::after { content: ""; margin-left: auto; flex: none; width: 8px; height: 8px; border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(45deg) translateY(-2px); }
 details.more[open] > summary::after { transform: rotate(-135deg) translateY(-2px); }
 #invNote:empty { display: none; }
+.warnbar { margin: 0 0 12px; padding: 12px 14px; border-radius: 12px; background: var(--warn-bg); color: var(--warn); font-weight: 650; font-size: 14.5px; line-height: 1.4; }
+.warnbar[hidden] { display: none; }
 #plFill { margin: 0 0 12px; }
 .pending { margin: 0 0 10px; padding: 10px 12px; border-radius: 10px; background: var(--warn-bg); color: var(--warn); font-weight: 650; font-size: 14.5px; }
 .updatebar { position: fixed; left: 12px; right: 12px; bottom: calc(66px + env(safe-area-inset-bottom)); z-index: 12; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 8px 8px 14px; background: var(--surface); border: 1px solid var(--accent); border-radius: 12px; box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.4); font-weight: 650; }
@@ -277,6 +279,9 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
     <h1>Deal Desk</h1>
     <button type="button" class="ghost small" id="installBtn" hidden>Add to Home Screen</button>
   </header>
+  <div class="warnbar" id="storeWarn" role="alert" hidden>
+    This browser is not keeping saved items between visits (a Private tab, or storage blocked in Safari's settings). Your items stay through a refresh in this tab, but are lost when you close it. Open the app from your Home Screen, or tap Back up after each change.
+  </div>
   <div class="card" id="installCard" hidden>
     <h3>Put it on your Home Screen</h3>
     <p class="sub">In Safari, tap the Share button, then Add to Home Screen. After that it opens like any other app and works without a connection.</p>
@@ -653,6 +658,7 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
     <div class="card">
       <h3>Backup</h3>
       <p class="sub">Your inventory and sales are saved on this phone only. Back them up now and then, and before you delete the app or clear Safari data. Photos are not in the backup file.</p>
+      <p class="sub" id="ctxNote"></p>
       <div class="actions">
         <button type="button" id="backupBtn">Back up</button>
         <button type="button" class="ghost" id="restoreBtn">Restore</button>
@@ -689,11 +695,32 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
 
-  /* ---------- storage that tolerates being blocked ---------- */
+  /* ---------- storage that tolerates being blocked ----------
+     Normally everything lives in the browser's saved storage. Some setups (a Private tab, or storage blocked in Safari's
+     settings) accept writes but forget them, or refuse them. Then items are kept in window.name, which survives a refresh of
+     the same tab, and a warning explains that they will not survive closing it. */
+  var NAME_KEY = 'dd2name:', mem = {}, volatileStore = false;
+  try { if (typeof window.name === 'string' && window.name.indexOf(NAME_KEY) === 0) mem = JSON.parse(window.name.slice(NAME_KEY.length)) || {}; } catch (e) { mem = {}; }
+  function mirror() { try { window.name = NAME_KEY + JSON.stringify(mem); } catch (e) {} }
+  function warnStore() { volatileStore = true; var w = document.getElementById('storeWarn'); if (w) w.hidden = false; }
   var store = {
-    get: function (k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } },
-    set: function (k, v) { try { window.localStorage.setItem(k, v); } catch (e) {} }
+    get: function (k) {
+      var v = null;
+      try { v = window.localStorage.getItem(k); } catch (e) {}
+      return (v == null && mem[k] != null) ? mem[k] : v;
+    },
+    set: function (k, v) {
+      var ok = false;
+      try { window.localStorage.setItem(k, v); ok = window.localStorage.getItem(k) === v; } catch (e) {}
+      if (ok) { if (k in mem) { delete mem[k]; mirror(); } return; }
+      mem[k] = v; mirror(); warnStore();
+    }
   };
+  (function probe() {
+    var ok = false;
+    try { window.localStorage.setItem('dd2-probe', '1'); ok = window.localStorage.getItem('dd2-probe') === '1'; window.localStorage.removeItem('dd2-probe'); } catch (e) {}
+    if (!ok) warnStore();
+  })();
 
   /* ---------- small helpers ---------- */
   function num(v) {
@@ -2112,6 +2139,9 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
   var standalone = (window.navigator.standalone === true) || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
   var onIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
   if (onIOS && !standalone && !state.installDismissed) $('installBtn').hidden = false;
+  $('ctxNote').textContent = standalone
+    ? 'You are using the Home Screen app. Items saved here are separate from anything saved in a Safari tab.'
+    : 'You are in a browser tab. Items saved here stay in this browser and do not appear in the Home Screen app, and the other way around. To move them, tap Back up here and Restore there.';
   $('installBtn').addEventListener('click', function () { $('installCard').hidden = false; });
   $('installClose').addEventListener('click', function () {
     $('installCard').hidden = true; $('installBtn').hidden = true; state.installDismissed = true; saveState();
