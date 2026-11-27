@@ -186,6 +186,7 @@ details.more > summary { cursor: pointer; font-weight: 700; min-height: 30px; di
 details.more > summary::after { content: ""; margin-left: auto; flex: none; width: 8px; height: 8px; border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(45deg) translateY(-2px); }
 details.more[open] > summary::after { transform: rotate(-135deg) translateY(-2px); }
 #invNote:empty { display: none; }
+#plFill { margin: 0 0 12px; }
 .pending { margin: 0 0 10px; padding: 10px 12px; border-radius: 10px; background: var(--warn-bg); color: var(--warn); font-weight: 650; font-size: 14.5px; }
 .updatebar { position: fixed; left: 12px; right: 12px; bottom: calc(66px + env(safe-area-inset-bottom)); z-index: 12; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 8px 8px 14px; background: var(--surface); border: 1px solid var(--accent); border-radius: 12px; box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.4); font-weight: 650; }
 .linkrow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
@@ -596,6 +597,7 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
         <button type="button" class="ghost small" id="plToggle" aria-pressed="false">Table view</button>
       </div>
       <p class="pending" id="plPending" role="status" hidden></p>
+      <button type="button" class="small" id="plFill" hidden>Use the expected amounts</button>
       <p class="sub" id="plEmpty">Mark a deal as Sold and enter what you kept, or add a past sale below. Your profits and losses show up here.</p>
       <div id="plBody" class="col" hidden>
         <div>
@@ -1205,6 +1207,10 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
     }
     return parts;
   }
+  /* What an item should bring in, from its asking price and fees, so marking it Sold can count right away. */
+  function hasEstimate(d) { return !(d.askPrice == null && d.expProfit === 0); }
+  function expectedKept(d) { return Math.max(0, round2((d.kind === 'own' ? 0 : d.cost) + d.expProfit)); }
+  var guessed = {};   // items whose Sold-for amount was filled in from the expected price and not edited since
   function paintLine(node, d) {
     node.textContent = '';
     dealLine(d).forEach(function (p) { node.appendChild(el('span', { class: p.cls, text: p.t })); });
@@ -1601,7 +1607,11 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
     (own ? OWN_STATUSES : STATUSES).forEach(function (s) { var o = el('option', { text: s }); if (s === d.status) o.selected = true; statusSel.appendChild(o); });
     statusSel.addEventListener('change', function () {
       d.status = statusSel.value;
-      if (d.status === 'Sold' && !d.soldOn) d.soldOn = isoDay();
+      if (d.status === 'Sold') {
+        if (!d.soldOn) d.soldOn = isoDay();
+        /* fill in the expected amount so the sale shows on the Profit tab at once; she can change it to the real figure */
+        if (d.soldNet == null && hasEstimate(d)) { d.soldNet = expectedKept(d); guessed[d.id] = true; }
+      }
       saveLog(); renderLog();
     });
 
@@ -1644,7 +1654,9 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
       lineEl
     ];
     if (d.status === 'Sold') {
-      kids.push(moneyField('Sold for (what you kept after fees and shipping)', 'sold-' + d.id, d.soldNet, function (v) { d.soldNet = v; touch(true); }));
+      var guessNote = guessed[d.id] ? el('p', { class: 'sub', text: 'Filled in from your expected price. Change it if the real sale was different.' }) : null;
+      kids.push(moneyField('Sold for (what you kept after fees and shipping)', 'sold-' + d.id, d.soldNet, function (v) { d.soldNet = v; if (guessNote) guessNote.hidden = true; delete guessed[d.id]; touch(true); }));
+      if (guessNote) kids.push(guessNote);
       kids.push(dateField('Sold on', 'soldon-' + d.id, d.soldOn || d.created, function (v) { d.soldOn = v; saveLog(); updateStats(); }));
     }
     kids.push(det);
@@ -1979,6 +1991,7 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
     var pending = log.filter(function (d) { return d.status === 'Sold' && d.soldNet == null; });
     var pend = $('plPending');
     pend.hidden = !pending.length;
+    $('plFill').hidden = !pending.some(hasEstimate);
     pend.textContent = pending.length ? (pending.length === 1 ? '1 sold item needs an amount before it counts: ' : pending.length + ' sold items need an amount before they count: ') + pending.slice(0, 3).map(function (d) { return d.name; }).join(', ') + (pending.length > 3 ? ' and ' + (pending.length - 3) + ' more' : '') + '. Open it in Inventory and fill in what you kept.' : '';
     $('plEmpty').hidden = has;
     $('plToggle').hidden = !has;
@@ -2102,6 +2115,13 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
   $('installBtn').addEventListener('click', function () { $('installCard').hidden = false; });
   $('installClose').addEventListener('click', function () {
     $('installCard').hidden = true; $('installBtn').hidden = true; state.installDismissed = true; saveState();
+  });
+
+  $('plFill').addEventListener('click', function () {
+    log.forEach(function (d) {
+      if (d.status === 'Sold' && d.soldNet == null && hasEstimate(d)) { d.soldNet = expectedKept(d); guessed[d.id] = true; if (!d.soldOn) d.soldOn = isoDay(); }
+    });
+    saveLog(); renderLog();
   });
 
   /* ---------- keep every open window in step ----------
