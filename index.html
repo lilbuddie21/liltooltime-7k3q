@@ -83,7 +83,7 @@ p { margin: 0; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
 
 label, .label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
-input[type="text"], input[type="date"], select {
+input[type="text"], input[type="password"], input[type="date"], select {
   width: 100%;
   min-height: 46px;
   font: inherit;
@@ -189,6 +189,9 @@ details.more[open] > summary::after { transform: rotate(-135deg) translateY(-2px
 .warnbar { margin: 0 0 12px; padding: 12px 14px; border-radius: 12px; background: var(--warn-bg); color: var(--warn); font-weight: 650; font-size: 14.5px; line-height: 1.4; }
 .warnbar[hidden] { display: none; }
 #plFill { margin: 0 0 12px; }
+#syncSetup { margin-top: 16px; }
+#syncOn .actions { margin-top: 12px; }
+#syncCodeBox { margin-top: 12px; }
 .pending { margin: 0 0 10px; padding: 10px 12px; border-radius: 10px; background: var(--warn-bg); color: var(--warn); font-weight: 650; font-size: 14.5px; }
 .updatebar { position: fixed; left: 12px; right: 12px; bottom: calc(66px + env(safe-area-inset-bottom)); z-index: 12; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 8px 8px 14px; background: var(--surface); border: 1px solid var(--accent); border-radius: 12px; box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.4); font-weight: 650; }
 .linkrow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
@@ -655,6 +658,47 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
       </details>
     </div>
 
+    <div class="card" id="syncCard">
+      <h3>Sync between devices</h3>
+      <p class="sub" id="syncStatus"></p>
+      <div id="syncOff">
+        <p class="sub">Items, prices and sales are kept in a private GitHub repository that you own, so your phone, your wife's phone and your Mac show the same list. Photos stay on the device they were taken on for now.</p>
+        <div class="col">
+          <div>
+            <label for="syncCode">Sync code from another device</label>
+            <input type="text" id="syncCode" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste the code here">
+          </div>
+          <button type="button" id="syncUseCode">Connect with code</button>
+        </div>
+        <details class="more" id="syncSetup">
+          <summary>First device: set up with a repository and token</summary>
+          <div class="col">
+            <p class="sub">On GitHub, create a new private repository (for example deal-desk-data) with a README. Then create a fine-grained access token for only that repository, with Contents set to Read and write. Enter both here.</p>
+            <div>
+              <label for="syncRepo">Repository</label>
+              <input type="text" id="syncRepo" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="your-username/deal-desk-data">
+            </div>
+            <div>
+              <label for="syncToken">Access token</label>
+              <input type="password" id="syncToken" autocomplete="off" autocapitalize="off" spellcheck="false">
+            </div>
+            <button type="button" id="syncConnect">Connect</button>
+          </div>
+        </details>
+      </div>
+      <div id="syncOn" hidden>
+        <p class="sub" id="syncRepoName"></p>
+        <div class="actions">
+          <button type="button" id="syncNowBtn">Sync now</button>
+          <button type="button" class="ghost" id="syncShowCode">Show sync code</button>
+          <button type="button" class="ghost" id="syncOffBtn">Disconnect</button>
+        </div>
+        <textarea class="export" id="syncCodeBox" hidden readonly aria-label="Sync code"></textarea>
+        <p class="sub" id="syncCodeNote" hidden>Anyone with this code can read and change your inventory. Send it only to your wife, in Messages or AirDrop, and never post it anywhere.</p>
+      </div>
+      <p class="msg" id="syncMsg"></p>
+    </div>
+
     <div class="card">
       <h3>Backup</h3>
       <p class="sub">Your inventory and sales are saved on this phone only. Back them up now and then, and before you delete the app or clear Safari data. Photos are not in the backup file.</p>
@@ -819,7 +863,30 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
   var CONDITIONS = ['New', 'Open box', 'Used - like new', 'Used - good', 'Used - fair', 'For parts'];
   var log = [], lastLogJson = store.get('dd2-log');
   try { var rawLog = JSON.parse(lastLogJson || '[]'); if (Array.isArray(rawLog)) log = rawLog.map(cleanDeal).filter(Boolean); } catch (e) { log = []; }
-  function saveLog() { lastLogJson = JSON.stringify(log); store.set('dd2-log', lastLogJson); }
+  /* Change tracking for sync: every saved change stamps the item's updated time, and removed items leave a dated deletion record. */
+  var sigs = {}, tombs = {};
+  function sigOf(d) { var c = {}; Object.keys(d).forEach(function (k) { if (k !== 'updated') c[k] = d[k]; }); return JSON.stringify(c); }
+  function loadTombs() {
+    tombs = {};
+    try {
+      var t = JSON.parse(store.get('dd2-tombs') || '{}');
+      if (t && typeof t === 'object') Object.keys(t).forEach(function (id) { if (isFinite(t[id])) tombs[id] = Number(t[id]); });
+    } catch (e) { tombs = {}; }
+  }
+  function resetSigs() { sigs = {}; log.forEach(function (d) { sigs[d.id] = sigOf(d); }); }
+  loadTombs(); resetSigs();
+  function trackChanges() {
+    var now = Date.now(), seen = {};
+    log.forEach(function (d) {
+      seen[d.id] = true;
+      var sg = sigOf(d);
+      if (sigs[d.id] !== sg) { d.updated = now; sigs[d.id] = sg; }
+    });
+    Object.keys(sigs).forEach(function (id) { if (!seen[id]) { tombs[id] = now; delete sigs[id]; } });
+    Object.keys(tombs).forEach(function (id) { if (now - tombs[id] > 120 * 86400000) delete tombs[id]; });
+  }
+  function persistLog() { lastLogJson = JSON.stringify(log); store.set('dd2-log', lastLogJson); store.set('dd2-tombs', JSON.stringify(tombs)); }
+  function saveLog() { trackChanges(); persistLog(); scheduleSync(); }
 
   function str(v, n) { return typeof v === 'string' ? v.slice(0, n) : ''; }
   function cleanDeal(d) {
@@ -847,7 +914,8 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
       listedOn: str(d.listedOn, 40),
       location: str(d.location, 60),
       notes: str(d.notes, 1000),
-      boughtOn: validDay(d.boughtOn)
+      boughtOn: validDay(d.boughtOn),
+      updated: isFinite(d.updated) ? Number(d.updated) : 0   // when it last changed, in ms; used to merge edits from other devices
     };
   }
 
@@ -2119,7 +2187,7 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
         var clean = arr.map(cleanDeal).filter(Boolean);
         log = clean; saveLog(); renderLog();
         if (window.indexedDB) { var keep = {}; clean.forEach(function (x) { keep[x.id] = true; }); dbKeepOnly(keep).then(null, function () {}); }
-        $('backupMsg').textContent = 'Restored ' + clean.length + ' item' + (clean.length === 1 ? '' : 's') + '. Your inventory now matches the backup. Photos are not in a backup.';
+        $('backupMsg').textContent = 'Restored ' + clean.length + ' item' + (clean.length === 1 ? '' : 's') + '. Your inventory now matches the backup.' + (syncCfg ? ' Sync is on, so items that are not in this backup are removed on your other devices too.' : '') + ' Photos are not in a backup.';
       } catch (e) {
         $('backupMsg').textContent = 'That file is not a Deal Desk backup.';
       }
@@ -2154,6 +2222,198 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
     saveLog(); renderLog();
   });
 
+  /* ---------- sync between devices (a private GitHub repository you own) ----------
+     One file, data.json, holds the list and the deletion records. Each sync reads it, merges it with this device's list
+     (newest edit per item wins, a deletion beats an older edit, nothing else is dropped), writes it back if it changed,
+     and updates this screen. The connection is kept in the browser's normal storage only, never in the refresh copy. */
+  function mergeSets(aDeals, aTombs, bDeals, bTombs) {
+    var tomb = {}, byId = {}, order = [];
+    [aTombs, bTombs].forEach(function (t) {
+      Object.keys(t || {}).forEach(function (id) { if (!(tomb[id] >= t[id])) tomb[id] = t[id]; });
+    });
+    [aDeals, bDeals].forEach(function (list) {
+      (list || []).forEach(function (d) {
+        var cur = byId[d.id];
+        if (!cur) { byId[d.id] = d; order.push(d.id); }
+        else if ((d.updated || 0) > (cur.updated || 0)) byId[d.id] = d;   // a tie keeps the first (this device's) copy
+      });
+    });
+    var deals = [], outT = {};
+    order.forEach(function (id) {
+      var d = byId[id];
+      if (tomb[id] != null && tomb[id] >= (d.updated || 0)) return;   // removed after its last edit
+      deals.push(d);
+    });
+    Object.keys(tomb).forEach(function (id) { if (!byId[id] || tomb[id] >= (byId[id].updated || 0)) outT[id] = tomb[id]; });
+    deals.sort(function (x, y) { return x.created < y.created ? 1 : x.created > y.created ? -1 : 0; });   // stable: newest first
+    return { deals: deals, tombs: outT };
+  }
+  function norm(deals, t) {
+    var d = deals.slice().sort(function (a, b) { return a.id < b.id ? -1 : a.id > b.id ? 1 : 0; });
+    return JSON.stringify(d) + '|' + JSON.stringify(Object.keys(t).sort().map(function (k) { return [k, t[k]]; }));
+  }
+
+  var SYNC_KEY = 'dd2-sync', syncCfg = null, syncBusy = null, syncAgain = false, syncTimer = 0, syncInfo = '';
+  try {
+    var rawSync = JSON.parse(window.localStorage.getItem(SYNC_KEY) || 'null');
+    if (rawSync && typeof rawSync.repo === 'string' && typeof rawSync.token === 'string') syncCfg = rawSync;
+  } catch (e) { syncCfg = null; }
+  function saveSyncCfg() {
+    try { if (syncCfg) window.localStorage.setItem(SYNC_KEY, JSON.stringify(syncCfg)); else window.localStorage.removeItem(SYNC_KEY); return true; } catch (e) { return false; }
+  }
+  function b64(str) { return btoa(unescape(encodeURIComponent(str))); }
+  function unb64(str) { return decodeURIComponent(escape(atob(str.replace(/\s/g, '')))); }
+  function repoPath() { return '/repos/' + syncCfg.repo; }
+  function ghCall(method, path, body) {
+    var headers = { 'Authorization': 'Bearer ' + syncCfg.token, 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
+    if (body) headers['Content-Type'] = 'application/json';
+    return fetch((syncCfg.api || 'https://api.github.com') + path, { method: method, cache: 'no-cache', headers: headers, body: body ? JSON.stringify(body) : undefined }).then(function (res) {
+      return res.text().then(function (t) {
+        var j = null; try { j = t ? JSON.parse(t) : null; } catch (e) {}
+        return { status: res.status, json: j };
+      });
+    });
+  }
+  function syncError(code, msg) { var e = new Error(msg || code); e.code = code; return e; }
+  function failFor(r) {
+    if (r.status === 401) return syncError('auth', 'GitHub rejected the token. It may have expired or been revoked. Disconnect, then connect again with a new token.');
+    if (r.status === 403 || r.status === 429) return syncError('perm', 'GitHub refused the request. Check that the token has Contents set to Read and write for this repository, or wait a few minutes if you hit a rate limit.');
+    if (r.status === 404) return syncError('missing', 'Repository not found, or the token cannot see it. Check the name, and that the token is allowed to use this repository.');
+    return syncError('http', 'GitHub returned an error (' + r.status + '). Trying again shortly.');
+  }
+  function readRemote() {
+    return ghCall('GET', repoPath() + '/contents/data.json').then(function (r) {
+      if (r.status === 404) return { sha: null, data: null };
+      if (r.status !== 200 || !r.json) throw failFor(r);
+      if (typeof r.json.content !== 'string' || r.json.encoding !== 'base64') throw syncError('big', 'The cloud file is too large to read here.');
+      var parsed = null;
+      try { parsed = JSON.parse(unb64(r.json.content)); } catch (e) { parsed = null; }
+      if (!parsed || !Array.isArray(parsed.deals)) throw syncError('corrupt', 'The cloud copy could not be read, so nothing was changed.');
+      var t = {};
+      if (parsed.tombs && typeof parsed.tombs === 'object') Object.keys(parsed.tombs).forEach(function (id) { if (isFinite(parsed.tombs[id])) t[id] = Number(parsed.tombs[id]); });
+      return { sha: r.json.sha, data: { deals: parsed.deals.map(cleanDeal).filter(Boolean), tombs: t } };
+    });
+  }
+  function writeRemote(m, sha) {
+    var body = { message: 'Deal Desk sync', content: b64(JSON.stringify({ v: 1, saved: new Date().toISOString(), deals: m.deals, tombs: m.tombs })) };
+    if (sha) body.sha = sha;
+    return ghCall('PUT', repoPath() + '/contents/data.json', body).then(function (r) {
+      if (r.status === 200 || r.status === 201) return;
+      if (r.status === 409 || r.status === 422) throw syncError('conflict', 'conflict');
+      throw failFor(r);
+    });
+  }
+  function applyMerged(m) {
+    var keep = {}; m.deals.forEach(function (d) { keep[d.id] = true; });
+    var gone = log.filter(function (d) { return !keep[d.id]; });
+    log = m.deals; tombs = m.tombs; resetSigs(); persistLog();
+    gone.forEach(function (d) { delete openCards[d.id]; dropItemPhotos(d.id); });
+    renderLog();
+  }
+  function runSync() {
+    var tries = 0;
+    function once() {
+      return readRemote().then(function (rem) {
+        var remDeals = rem.data ? rem.data.deals : [], remTombs = rem.data ? rem.data.tombs : {};
+        var snap = lastLogJson + '|' + JSON.stringify(tombs);
+        var m = mergeSets(log, tombs, remDeals, remTombs), merged = norm(m.deals, m.tombs);
+        var localSame = merged === norm(log, tombs);
+        var remoteSame = !!rem.data && merged === norm(remDeals, remTombs);
+        return (remoteSame ? Promise.resolve() : writeRemote(m, rem.sha)).then(function () {
+          if (localSame) return;
+          if (lastLogJson + '|' + JSON.stringify(tombs) !== snap) { syncAgain = true; return; }   // edited while syncing; the next round merges it
+          applyMerged(m);
+        });
+      }).catch(function (e) {
+        if (e && e.code === 'conflict' && ++tries < 3) return once();
+        throw e;
+      });
+    }
+    return once();
+  }
+  function renderSync() {
+    var on = !!syncCfg;
+    $('syncOff').hidden = on; $('syncOn').hidden = !on;
+    $('syncStatus').textContent = on ? (syncInfo || 'Connected.') : 'Not connected. Each device keeps its own list until you connect them.';
+    $('syncRepoName').textContent = on ? 'Repository: ' + syncCfg.repo : '';
+  }
+  function setSyncInfo(text) { syncInfo = text; renderSync(); }
+  function scheduleSync() { if (!syncCfg) return; clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, 1500); }
+  function syncNow() {
+    if (!syncCfg) return Promise.resolve();
+    if (syncBusy) { syncAgain = true; return syncBusy; }
+    if (navigator.onLine === false) { setSyncInfo('Offline. Your changes are saved here and will sync when you are back online.'); return Promise.resolve(); }
+    setSyncInfo('Syncing...');
+    syncBusy = runSync().then(function () {
+      setSyncInfo('Synced at ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + '.');
+    }, function (e) {
+      var known = e && e.code;
+      if (!known) { try { console.error(e); } catch (x) {} }
+      setSyncInfo(known === 'conflict' ? 'Another device was saving at the same moment. Trying again shortly.' : known ? e.message : 'Could not reach GitHub. Your changes are saved here and will sync when the connection is back.');
+      if (!known || known === 'conflict' || known === 'http') { clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, 20000); }
+    }).then(function () {
+      syncBusy = null;
+      if (syncAgain) { syncAgain = false; scheduleSync(); }
+    });
+    return syncBusy;
+  }
+  function connectSync(repo, token, api) {
+    var msg = $('syncMsg');
+    repo = String(repo || '').trim().replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '').replace(/\/$/, '');
+    token = String(token || '').trim();
+    if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) { msg.textContent = 'Enter the repository as your-username/repository-name.'; return; }
+    if (!token) { msg.textContent = 'Paste the access token.'; return; }
+    var prev = syncCfg; syncCfg = { repo: repo, token: token }; if (api) syncCfg.api = api;
+    msg.textContent = 'Checking...';
+    ghCall('GET', repoPath()).then(function (r) {
+      if (r.status !== 200 || !r.json) throw failFor(r);
+      if (r.json.private !== true) throw syncError('public', 'That repository is public, so anyone could read your inventory. Make it private in the repository settings, then connect.');
+      if (r.json.permissions && r.json.permissions.push === false) throw syncError('perm', 'The token can read this repository but not write to it. Give it Contents: Read and write.');
+      if (!saveSyncCfg()) throw syncError('store', 'This browser would not keep the connection. Open the app from your Home Screen and try again.');
+      msg.textContent = 'Connected.'; $('syncToken').value = ''; $('syncCode').value = '';
+      startPolling(); renderSync();
+      return syncNow();
+    }).catch(function (e) {
+      syncCfg = prev;
+      msg.textContent = e && e.code ? e.message : 'Could not reach GitHub. Check your connection and try again.';
+      renderSync();
+    });
+  }
+  function syncCode() {
+    var c = { r: syncCfg.repo, t: syncCfg.token }; if (syncCfg.api) c.a = syncCfg.api;
+    return 'DD1.' + btoa(JSON.stringify(c));
+  }
+  $('syncConnect').addEventListener('click', function () { connectSync($('syncRepo').value, $('syncToken').value); });
+  $('syncUseCode').addEventListener('click', function () {
+    var text = $('syncCode').value.trim().replace(/\s+/g, ''), c = null;
+    if (text.indexOf('DD1.') === 0) { try { c = JSON.parse(atob(text.slice(4))); } catch (e) { c = null; } }
+    if (!c || typeof c.r !== 'string' || typeof c.t !== 'string') { $('syncMsg').textContent = 'That is not a sync code. Copy the whole code from your other device.'; return; }
+    connectSync(c.r, c.t, typeof c.a === 'string' && /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(c.a) ? c.a : undefined);
+  });
+  $('syncNowBtn').addEventListener('click', function () { $('syncMsg').textContent = ''; syncNow(); });
+  $('syncShowCode').addEventListener('click', function () {
+    if (!syncCfg) return;
+    var code = syncCode(), box = $('syncCodeBox'), msg = $('syncMsg');
+    box.value = code; box.hidden = false; $('syncCodeNote').hidden = false;
+    var pick = function () { msg.textContent = 'Select the code above and copy it.'; box.focus(); box.select(); };
+    try { navigator.clipboard.writeText(code).then(function () { msg.textContent = 'Code copied. Paste it on your other device under Sync code.'; }, pick); } catch (e) { pick(); }
+  });
+  var offArmed = false;
+  $('syncOffBtn').addEventListener('click', function () {
+    var b = this;
+    if (!offArmed) { offArmed = true; b.textContent = 'Tap again to disconnect'; setTimeout(function () { offArmed = false; b.textContent = 'Disconnect'; }, 3000); return; }
+    offArmed = false; b.textContent = 'Disconnect';
+    syncCfg = null; saveSyncCfg(); syncInfo = ''; stopPolling(); clearTimeout(syncTimer);
+    $('syncCodeBox').value = ''; $('syncCodeBox').hidden = true; $('syncCodeNote').hidden = true;
+    $('syncMsg').textContent = 'Disconnected. Your items stay on this device and the online copy is untouched. To cut access completely, delete the token on GitHub.';
+    renderSync();
+  });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) syncNow(); });
+  window.addEventListener('online', syncNow);
+  var pollTimer = 0;   // only runs while sync is connected
+  function startPolling() { if (!pollTimer) pollTimer = setInterval(function () { if (!document.hidden) syncNow(); }, 30000); }
+  function stopPolling() { clearInterval(pollTimer); pollTimer = 0; }
+
   /* ---------- keep every open window in step ----------
      Tabs inside one window already share the same list and redraw together. This covers a second window or the app being
      reopened: it picks up the newest saved list when another window saves, and whenever this one comes back to the front. */
@@ -2164,6 +2424,7 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
       var parsed = JSON.parse(raw || '[]');
       if (!Array.isArray(parsed)) return;
       log = parsed.map(cleanDeal).filter(Boolean); lastLogJson = raw;
+      loadTombs(); resetSigs();
       renderLog();
     } catch (e) {}
   }
@@ -2188,8 +2449,10 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: 
   renderCheck();
   renderSell();
   renderLog();
+  renderSync();
   showTab(state.tab);
-  window.DealDesk = { calc: calc, sellCalc: sellCalc, plRows: plRows, plSummary: plSummary };
+  if (syncCfg) { startPolling(); syncNow(); }
+  window.DealDesk = { calc: calc, sellCalc: sellCalc, plRows: plRows, plSummary: plSummary, merge: mergeSets, syncNow: syncNow };
 
   /* ---------- updates: check for a new version now and then, and switch to it when it arrives ---------- */
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
